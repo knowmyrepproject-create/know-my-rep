@@ -11,6 +11,16 @@
             box-sizing: border-box;
         }
 
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f7f7f7;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
 
         .kmr-container {
             max-width: 600px;
@@ -226,7 +236,7 @@
     <div class="kmr-container">
         <div class="kmr-hero">
             <h1>Know My Rep</h1>
-            <p>Find ALL Your Elected Representatives - Local to Federal</p>
+            <p>Enter your address to find your elected representatives </p>
         </div>
 
         <div class="kmr-search-box">
@@ -238,11 +248,11 @@
                        value="">
             </div>
             <div>
-                <button onclick="findRepresentatives()" class="kmr-btn">
+                <button onclick="findRepresentatives()" class="kmr-btn kmr-btn-primary">
                     Find My Representatives
                 </button>
             </div>
-            <div id="statusMessage" class="kmr-status"></div>
+            <div id="statusMessage"></div>
         </div>
 
         <div id="loadingDiv" class="kmr-loading" style="display: none;">
@@ -254,8 +264,224 @@
     </div>
 
     <script>
-        // JavaScript code to handle fetching, processing, and displaying data remains unchanged
-        // Refer to the previously provided script for fetching Cicero API data, displaying results, etc.
+        const CICERO_API_KEY = 'ccc7f60c9d8d5ccc0f7c849e754f5aef78ff706c';
+        const CORS_PROXIES = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            'https://cors.bridged.cc/',
+            'https://cors-anywhere.herokuapp.com/'
+        ];
+
+        let currentProxyIndex = 0;
+
+        async function findRepresentatives() {
+            const address = document.getElementById('addressInput').value.trim();
+            if (!address) {
+                showStatus('Please enter your address', 'error');
+                return;
+            }
+
+            if (!CICERO_API_KEY || CICERO_API_KEY.length < 30) {
+                showStatus('Error: Invalid Cicero API key configuration.', 'error');
+                return;
+            }
+
+            const loadingDiv = document.getElementById('loadingDiv');
+            const resultsDiv = document.getElementById('resultsDiv');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+            showStatus('Searching for your representatives...', 'info');
+
+            try {
+                const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=us&limit=1`;
+                const geoResponse = await fetch(geocodeUrl);
+                const geoData = await geoResponse.json();
+
+                if (geoData && geoData.length > 0) {
+                    const lat = geoData[0].lat;
+                    const lon = geoData[0].lon;
+                    await fetchCiceroOfficials(lat, lon, address);
+                    
+                } else {
+                    throw new Error('Could not find that address. Please check and try again.');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                loadingDiv.style.display = 'none';
+                showError(error.message || 'Could not fetch representatives. Please try again later.');
+            }
+        }
+
+        async function fetchCiceroOfficials(lat, lon, address) {
+            const ciceroUrl = `https://cicero.azavea.com/v3.1/official?lat=${lat}&lon=${lon}&format=json&key=${CICERO_API_KEY}&includechildren=1&order=asc`;
+            
+            let success = false;
+            let lastError = null;
+
+            for (let i = 0; i < CORS_PROXIES.length; i++) {
+                const proxy = CORS_PROXIES[currentProxyIndex];
+                const proxyUrl = proxy + encodeURIComponent(ciceroUrl);
+                
+                try {
+                    const response = await fetch(proxyUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                    });
+
+                    const text = await response.text();
+                    let data;
+                    
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        throw new Error('Invalid response from API');
+                    }
+
+                    if (data.response && data.response.results) {
+                        displayCiceroResults(data, address);
+                        success = true;
+                        break;
+                    }
+                    
+                } catch (error) {
+                    lastError = error;
+                    currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
+                }
+            }
+
+            if (!success) {
+                document.getElementById('loadingDiv').style.display = 'none';
+                showError('Could not connect to Cicero API. Please try again later.');
+            }
+        }
+
+        function displayCiceroResults(data, address) {
+            const loadingDiv = document.getElementById('loadingDiv');
+            const resultsDiv = document.getElementById('resultsDiv');
+            
+            loadingDiv.style.display = 'none';
+            
+            try {
+                const officials = data.response.results.officials || [];
+                
+                if (officials.length > 0) {
+                    const grouped = groupOfficialsByLevel(officials);
+                    let electedCount = 0;
+
+                    for (const [level, levelOfficials] of Object.entries(grouped)) {
+                        electedCount += levelOfficials.length;
+                    }
+
+                    showStatus(`Found ${electedCount} elected representatives for your address`, 'success');
+                    
+                    let html = '<div style="text-align: center; margin-bottom: 20px; color: #004aad; font-weight: 600;">Showing ELECTED Officials Only (Local → State → Federal)</div>';
+                    
+                    const displayOrder = [
+                        'School Board', 'City/Town/Local', 'County', 'State Legislative', 'State Executive', 'Federal Legislative', 'Federal Executive'
+                    ];
+                    
+                    for (const level of displayOrder) {
+                        const levelOfficials = grouped[level];
+                        if (levelOfficials && levelOfficials.length > 0) {
+                            html += createLevelSection(level, levelOfficials);
+                        }
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                    
+                    const timestamp = new Date().toLocaleString();
+                    resultsDiv.innerHTML += `
+                        <div class="kmr-status info" style="margin-top: 20px;">
+                            <strong>Data Timestamp:</strong> ${timestamp}
+                        </div>
+                    `;
+                    
+                } else {
+                    showStatus('No representatives found for this address.', 'error');
+                }
+                
+            } catch (error) {
+                showError('Error displaying results. Please try again later.');
+            }
+        }
+
+        function groupOfficialsByLevel(officials) {
+            const groups = {
+                'School Board': [],
+                'City/Town/Local': [],
+                'County': [],
+                'State Legislative': [],
+                'State Executive': [],
+                'Federal Legislative': [],
+                'Federal Executive': []
+            };
+            
+            officials.forEach(official => {
+                const office = official.office || {};
+                const officeName = (office.name || '').toLowerCase();
+                
+                if (officeName.match(/school board/i)) {
+                    groups['School Board'].push(official);
+                } else if (officeName.match(/mayor|city council/i)) {
+                    groups['City/Town/Local'].push(official);
+                } else if (officeName.match(/county executive/i)) {
+                    groups['County'].push(official);
+                } else if (officeName.match(/state senator|state representative/i)) {
+                    groups['State Legislative'].push(official);
+                } else if (officeName.match(/governor|lieutenant governor/i)) {
+                    groups['State Executive'].push(official);
+                } else if (officeName.match(/senator|representative/i)) {
+                    groups['Federal Legislative'].push(official);
+                } else if (officeName.match(/president|vice president/i)) {
+                    groups['Federal Executive'].push(official);
+                }
+            });
+            
+            return groups;
+        }
+
+        function createLevelSection(level, officials) {
+            let html = `
+                <div class="kmr-level-section">
+                    <h2 class="kmr-level-title">${level} (${officials.length})</h2>
+                    <div class="kmr-officials-grid">
+            `;
+            
+            officials.forEach(official => {
+                const name = `${official.first_name} ${official.last_name}` || 'Name Not Available';
+                const officeName = official.office?.name || 'Office Not Specified';
+                const termStart = official.term_start || 'N/A';
+                const termEnd = official.term_end || 'N/A';
+                
+                html += `
+                    <div class="kmr-official-card">
+                        <div class="kmr-official-name">${name}</div>
+                        <div class="kmr-official-office">${officeName}</div>
+                        <div style="font-size: 0.9em; color: #666;">Term: ${termStart} - ${termEnd}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+            return html;
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.className = `kmr-status ${type}`;
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+        }
+
+        function showError(message) {
+            const resultsDiv = document.getElementById('resultsDiv');
+            resultsDiv.innerHTML = `<div class="kmr-error">${message}</div>`;
+            showStatus(message, 'error');
+        }
     </script>
 </body>
 </html>
