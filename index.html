@@ -3,620 +3,803 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Know My Rep - Find all your elected officials instantly">
     <title>Know My Rep - Find Your Representatives</title>
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-    
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #ffffff;
-      color: #000000;
-      line-height: 1.6;
-    }
-    
-    .kmr-container {
-      max-width: 100%;
-      margin: 0 auto;
-    }
-    
-    .kmr-hero {
-      background: linear-gradient(135deg, #004aad 0%, #0056c7 100%);
-      padding: 60px 20px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .kmr-hero::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      right: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
-      animation: pulse 15s ease-in-out infinite;
-    }
-    
-    @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.1); }
-    }
-    
-    .kmr-hero h1 {
-      font-size: 48px;
-      font-weight: 800;
-      color: #ffffff;
-      margin-bottom: 12px;
-      letter-spacing: -1px;
-      position: relative;
-      z-index: 1;
-    }
-    
-    .kmr-hero p {
-      font-size: 18px;
-      color: rgba(255,255,255,0.95);
-      font-weight: 400;
-      position: relative;
-      z-index: 1;
-    }
-    
-    .kmr-search-section {
-      background: #f8f9fa;
-      padding: 40px 20px;
-      border-bottom: 3px solid #004aad;
-    }
-    
-    .kmr-search-container {
-      max-width: 600px;
-      margin: 0 auto;
-    }
-    
-    .kmr-input {
-      width: 100%;
-      padding: 18px 20px;
-      font-size: 16px;
-      border: 2px solid #e0e0e0;
-      border-radius: 12px;
-      background: #ffffff;
-      transition: all 0.3s ease;
-      margin-bottom: 20px;
-    }
-    
-    .kmr-input:focus {
-      outline: none;
-      border-color: #004aad;
-      box-shadow: 0 0 0 4px rgba(0, 74, 173, 0.1);
-    }
-    
-    .kmr-btn-group {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    
-    .kmr-btn {
-      flex: 1;
-      min-width: 200px;
-      padding: 16px 24px;
-      font-size: 16px;
-      font-weight: 600;
-      border: none;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .kmr-btn-primary {
-      background: #eb3a3a;
-      color: #ffffff;
-    }
-    
-    .kmr-btn-primary:hover {
-      background: #d62828;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(235, 58, 58, 0.3);
-    }
-    
-    .kmr-btn-secondary {
-      background: #004aad;
-      color: #ffffff;
-    }
-    
-    .kmr-btn-secondary:hover {
-      background: #003a8c;
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0, 74, 173, 0.3);
-    }
-    
-    .kmr-results {
-      padding: 40px 20px;
-      min-height: 200px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    
-    .kmr-loading {
-      text-align: center;
-      padding: 60px 20px;
-    }
-    
-    .kmr-spinner {
-      width: 60px;
-      height: 60px;
-      border: 4px solid #e0e0e0;
-      border-top-color: #004aad;
-      border-radius: 50%;
-      margin: 0 auto 20px;
-      animation: spin 1s linear infinite;
-    }
-    
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-    
-    .kmr-results-header {
-      font-size: 32px;
-      font-weight: 700;
-      color: #004aad;
-      margin-bottom: 30px;
-      padding-bottom: 15px;
-      border-bottom: 3px solid #eb3a3a;
-    }
-    
-    .kmr-category {
-      margin-bottom: 40px;
-    }
-    
-    .kmr-category-title {
-      font-size: 24px;
-      font-weight: 600;
-      color: #000000;
-      margin-bottom: 20px;
-      padding-left: 15px;
-      border-left: 5px solid #eb3a3a;
-    }
-    
-    .kmr-official-card {
-      background: #ffffff;
-      border: 1px solid #e0e0e0;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 15px;
-      transition: all 0.3s ease;
-      position: relative;
-      overflow: hidden;
-      border-left: 4px solid #004aad;
-    }
-    
-    .kmr-official-card:hover {
-      transform: translateX(8px);
-      box-shadow: 0 8px 20px rgba(0, 74, 173, 0.1);
-    }
-    
-    .kmr-official-title {
-      font-size: 14px;
-      font-weight: 600;
-      color: #004aad;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 4px;
-    }
-    
-    .kmr-official-name {
-      font-size: 20px;
-      font-weight: 700;
-      color: #000000;
-    }
-    
-    .kmr-party-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      background: #004aad;
-      color: #ffffff;
-      border-radius: 20px;
-      font-size: 12px;
-      font-weight: 600;
-      margin-left: 12px;
-    }
-    
-    .kmr-party-badge.republican {
-      background: #eb3a3a;
-    }
-    
-    .kmr-contact-info {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 15px;
-      font-size: 14px;
-      color: #666;
-      margin-top: 12px;
-    }
-    
-    .kmr-contact-item a {
-      color: #004aad;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    
-    .kmr-contact-item a:hover {
-      color: #eb3a3a;
-    }
-    
-    .kmr-alert {
-      padding: 20px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-      font-size: 15px;
-    }
-    
-    .kmr-alert-info {
-      background: #e3f2fd;
-      border-left: 5px solid #004aad;
-      color: #004aad;
-    }
-    
-    .kmr-alert-warning {
-      background: #fff3cd;
-      border-left: 5px solid #ffc107;
-      color: #856404;
-    }
-    
-    .kmr-alert-error {
-      background: #ffebee;
-      border-left: 5px solid #eb3a3a;
-      color: #c62828;
-    }
-    
-    .kmr-manual-section {
-      background: #f8f9fa;
-      border-radius: 12px;
-      padding: 30px;
-      margin-top: 30px;
-    }
-    
-    .kmr-manual-title {
-      font-size: 24px;
-      font-weight: 600;
-      color: #004aad;
-      margin-bottom: 20px;
-    }
-    
-    .kmr-link-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 15px;
-      margin-top: 20px;
-    }
-    
-    .kmr-link-card {
-      background: #ffffff;
-      border: 1px solid #e0e0e0;
-      border-radius: 8px;
-      padding: 15px;
-      transition: all 0.3s ease;
-    }
-    
-    .kmr-link-card:hover {
-      border-color: #004aad;
-      box-shadow: 0 4px 12px rgba(0, 74, 173, 0.1);
-    }
-    
-    .kmr-link-card a {
-      color: #004aad;
-      text-decoration: none;
-      font-weight: 600;
-      display: block;
-    }
-    
-    .kmr-link-card a:hover {
-      color: #eb3a3a;
-    }
-    
-    .kmr-footer {
-      background: #004aad;
-      color: #ffffff;
-      text-align: center;
-      padding: 20px;
-      margin-top: 40px;
-      font-size: 14px;
-    }
-    
-    @media (max-width: 768px) {
-      .kmr-hero h1 {
-        font-size: 32px;
-      }
-      
-      .kmr-btn-group {
-        flex-direction: column;
-      }
-      
-      .kmr-btn {
-        width: 100%;
-        min-width: auto;
-      }
-      
-      .kmr-official-card:hover {
-        transform: none;
-      }
-    }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Ample Display', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        .kmr-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .kmr-hero {
+            background: linear-gradient(135deg, #004aad 0%, #002d6d 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+            border-radius: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 40px rgba(0, 74, 173, 0.3);
+        }
+
+        .kmr-hero h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .kmr-hero p {
+            font-size: 1.2em;
+            opacity: 0.95;
+            font-weight: 300;
+        }
+
+        .kmr-search-box {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+        }
+
+        .kmr-input-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .kmr-input {
+            flex: 1;
+            min-width: 250px;
+            padding: 15px 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+
+        .kmr-input:focus {
+            outline: none;
+            border-color: #004aad;
+            box-shadow: 0 0 0 3px rgba(0, 74, 173, 0.1);
+        }
+
+        .kmr-btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .kmr-btn-primary {
+            background: #eb3a3a;
+            color: white;
+            box-shadow: 0 4px 15px rgba(235, 58, 58, 0.3);
+        }
+
+        .kmr-btn-primary:hover {
+            background: #d62828;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(235, 58, 58, 0.4);
+        }
+
+        .kmr-btn-secondary {
+            background: #004aad;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .kmr-btn-secondary:hover {
+            background: #002d6d;
+            transform: translateY(-2px);
+        }
+
+        .kmr-loading {
+            text-align: center;
+            padding: 40px;
+            color: #004aad;
+        }
+
+        .kmr-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #004aad;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .kmr-results {
+            display: grid;
+            gap: 20px;
+        }
+
+        .kmr-level-section {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .kmr-level-title {
+            color: #004aad;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #eb3a3a;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .kmr-officials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .kmr-official-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #004aad;
+            transition: all 0.3s ease;
+        }
+
+        .kmr-official-card:hover {
+            transform: translateX(5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .kmr-official-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #000;
+            margin-bottom: 5px;
+        }
+
+        .kmr-official-office {
+            color: #eb3a3a;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .kmr-official-party {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .party-democrat, .party-democratic {
+            background: #0015BC;
+            color: white;
+        }
+
+        .party-republican {
+            background: #FF0000;
+            color: white;
+        }
+
+        .party-independent, .party-green, .party-libertarian {
+            background: #808080;
+            color: white;
+        }
+
+        .kmr-official-photo {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            object-fit: cover;
+            margin-bottom: 15px;
+            border: 3px solid #004aad;
+        }
+
+        .kmr-official-contact {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        .kmr-contact-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .kmr-contact-item strong {
+            min-width: 60px;
+            color: #000;
+            margin-right: 10px;
+        }
+
+        .kmr-contact-item a {
+            color: #004aad;
+            text-decoration: none;
+        }
+
+        .kmr-contact-item a:hover {
+            text-decoration: underline;
+        }
+
+        .kmr-error {
+            background: #fee;
+            border: 2px solid #eb3a3a;
+            color: #d62828;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .kmr-status {
+            text-align: center;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .kmr-status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .kmr-status.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .kmr-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .kmr-alternatives {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 3px 15px rgba(0, 0, 0, 0.08);
+        }
+
+        .kmr-alternatives h2 {
+            color: #004aad;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .kmr-alternatives h3 {
+            color: #004aad;
+            margin: 25px 0 15px;
+            font-size: 1.3em;
+        }
+
+        .kmr-alt-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .kmr-alt-link {
+            display: block;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #004aad;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .kmr-alt-link:hover {
+            border-color: #004aad;
+            background: #e6f2ff;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .kmr-hero h1 {
+                font-size: 1.8em;
+            }
+            
+            .kmr-input-group {
+                flex-direction: column;
+            }
+            
+            .kmr-input {
+                min-width: 100%;
+            }
+            
+            .kmr-btn-secondary {
+                margin-left: 0;
+                margin-top: 10px;
+            }
+
+            .kmr-officials-grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
-<div class="kmr-container">
-  <div class="kmr-hero">
-    <h1>KNOW MY REP</h1>
-    <p>Find all your elected officials in seconds</p>
-  </div>
-  
-  <div class="kmr-search-section">
-    <div class="kmr-search-container">
-      <input 
-        type="text" 
-        id="kmr-address" 
-        class="kmr-input"
-        placeholder="Enter your full address with ZIP code"
-        autocomplete="street-address"
-      />
-      <div class="kmr-btn-group">
-        <button class="kmr-btn kmr-btn-primary" onclick="findReps()">
-          Find My Representatives
-        </button>
-        <button class="kmr-btn kmr-btn-secondary" onclick="showManualLookup()">
-          Manual Lookup
-        </button>
-      </div>
+    <div class="kmr-container">
+        <div class="kmr-hero">
+            <h1>Know My Rep</h1>
+            <p>Find All Your Elected Representatives</p>
+        </div>
+
+        <div class="kmr-search-box">
+            <div class="kmr-input-group">
+                <input type="text" 
+                       id="addressInput" 
+                       class="kmr-input" 
+                       placeholder="Enter your full address (e.g., 123 Main St, Baltimore, MD 21201)"
+                       value="">
+            </div>
+            <div>
+                <button onclick="findRepresentatives()" class="kmr-btn kmr-btn-primary">
+                    Find My Representatives
+                </button>
+                <button onclick="showAlternatives()" class="kmr-btn kmr-btn-secondary">
+                    Use Alternative Databases
+                </button>
+            </div>
+            <div id="statusMessage"></div>
+        </div>
+
+        <div id="loadingDiv" class="kmr-loading" style="display: none;">
+            <div class="kmr-spinner"></div>
+            <p>Finding your representatives...</p>
+        </div>
+
+        <div id="resultsDiv"></div>
+        <div id="alternativesDiv"></div>
     </div>
-  </div>
-  
-  <div id="kmr-results" class="kmr-results"></div>
-  
-  <div class="kmr-footer">
-    Powered by Know My Rep © 2025 | Data from Cicero API & Official Government Sources
-  </div>
-</div>
 
-<script>
-const CICERO_API_KEY = 'd568c229f2cda320008fb0452cb5b318db280e05';
-const CICERO_API_BASE = 'https://cicero.azavea.com/v3.1';
-
-async function findReps() {
-  const address = document.getElementById('kmr-address').value.trim();
-  const resultsDiv = document.getElementById('kmr-results');
-  
-  if (!address) {
-    resultsDiv.innerHTML = `
-      <div class="kmr-alert kmr-alert-error">
-        <strong>⚠️ Address Required</strong><br>
-        Please enter your complete address including ZIP code.
-      </div>
-    `;
-    return;
-  }
-  
-  resultsDiv.innerHTML = `
-    <div class="kmr-loading">
-      <div class="kmr-spinner"></div>
-      <div>Finding your representatives...</div>
-    </div>
-  `;
-  
-  try {
-    const response = await fetch(
-      `${CICERO_API_BASE}/legislative_district?search_address=${encodeURIComponent(address)}&format=json&key=${CICERO_API_KEY}`
-    );
-    
-    if (!response.ok) throw new Error('API Error');
-    
-    const data = await response.json();
-    
-    if (data.error || !data.response?.results?.[0]?.districts) {
-      showFallbackLinks(resultsDiv, address);
-      return;
-    }
-    
-    const districts = data.response.results[0].districts;
-    const officials = await fetchAllOfficials(districts);
-    displayOfficials(officials, data.response.results[0].match_addr || address, resultsDiv);
-    
-  } catch (error) {
-    console.error('Error:', error);
-    showFallbackLinks(resultsDiv, address);
-  }
-}
-
-async function fetchAllOfficials(districts) {
-  const officials = { federal: [], state: [], county: [], local: [] };
-  
-  for (const district of districts) {
-    try {
-      const response = await fetch(
-        `${CICERO_API_BASE}/official?district_id=${district.district_id}&format=json&key=${CICERO_API_KEY}`
-      );
-      
-      if (response.ok) {
-        const data = await response.json();
-        if (data.response?.results) {
-          categorizeOfficials(data.response.results, district, officials);
-        }
-      }
-    } catch (err) {
-      console.error(`Error fetching district ${district.district_id}:`, err);
-    }
-  }
-  
-  return officials;
-}
-
-function categorizeOfficials(officialsList, district, officials) {
-  const districtType = (district.district_type || '').toLowerCase();
-  
-  officialsList.forEach(official => {
-    const officialData = {
-      title: official.office?.title || 'Official',
-      name: `${official.first_name || ''} ${official.last_name || ''}`.trim(),
-      party: official.party || '',
-      phone: official.offices?.[0]?.phone || '',
-      email: official.email_addresses?.[0] || '',
-      website: official.urls?.[0] || ''
-    };
-    
-    if (districtType.includes('federal') || districtType.includes('congress')) {
-      officials.federal.push(officialData);
-    } else if (districtType.includes('state')) {
-      officials.state.push(officialData);
-    } else if (districtType.includes('county')) {
-      officials.county.push(officialData);
-    } else {
-      officials.local.push(officialData);
-    }
-  });
-}
-
-function displayOfficials(officials, address, resultsDiv) {
-  let html = `<div class="kmr-results-header">Your Elected Representatives</div>`;
-  
-  html += `<div class="kmr-alert kmr-alert-info">
-    <strong>📍 Address:</strong> ${address}
-  </div>`;
-  
-  let totalCount = 0;
-  
-  ['federal', 'state', 'county', 'local'].forEach(level => {
-    if (officials[level].length > 0) {
-      const title = level.charAt(0).toUpperCase() + level.slice(1) + ' Officials';
-      html += `<div class="kmr-category">
-        <div class="kmr-category-title">${title}</div>`;
-      
-      officials[level].forEach(official => {
-        const partyClass = official.party?.toLowerCase().includes('republican') ? 'republican' : 
-                          official.party?.toLowerCase().includes('democrat') ? 'democrat' : '';
+    <script>
+        // ============================================
+        // CICERO API KEY CONFIGURATION
+        // ============================================
+        const CICERO_API_KEY = 'ccc7f60c9d8d5ccc0f7c849e754f5aef78ff706c';
         
-        html += `
-          <div class="kmr-official-card">
-            <div class="kmr-official-title">${official.title}</div>
-            <div class="kmr-official-name">
-              ${official.name}
-              ${official.party ? `<span class="kmr-party-badge ${partyClass}">${official.party}</span>` : ''}
+        // CORS proxy services to bypass browser restrictions
+        const CORS_PROXIES = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            'https://cors.bridged.cc/',
+            'https://cors-anywhere.herokuapp.com/'
+        ];
+
+        let currentProxyIndex = 0;
+
+        async function findRepresentatives() {
+            const address = document.getElementById('addressInput').value.trim();
+            if (!address) {
+                showStatus('Please enter your address', 'error');
+                return;
+            }
+
+            // Check if API key is valid format
+            if (!CICERO_API_KEY || CICERO_API_KEY.length < 30) {
+                showStatus('Error: Invalid Cicero API key configuration.', 'error');
+                console.error('Cicero API key appears to be invalid');
+                showAlternatives();
+                return;
+            }
+
+            const loadingDiv = document.getElementById('loadingDiv');
+            const resultsDiv = document.getElementById('resultsDiv');
+            const alternativesDiv = document.getElementById('alternativesDiv');
+            
+            loadingDiv.style.display = 'block';
+            resultsDiv.innerHTML = '';
+            alternativesDiv.innerHTML = '';
+            showStatus('Searching for your representatives...', 'info');
+
+            try {
+                // Step 1: Geocode the address using OpenStreetMap (free, no CORS issues)
+                showStatus('Locating address...', 'info');
+                const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=us&limit=1`;
+                
+                const geoResponse = await fetch(geocodeUrl);
+                const geoData = await geoResponse.json();
+
+                if (geoData && geoData.length > 0) {
+                    const lat = geoData[0].lat;
+                    const lon = geoData[0].lon;
+                    const displayName = geoData[0].display_name;
+                    
+                    console.log('Geocoded address:', displayName);
+                    console.log('Coordinates:', lat, lon);
+                    
+                    showStatus(`Found location: ${displayName}`, 'success');
+                    
+                    // Step 2: Query Cicero API with the coordinates
+                    await fetchCiceroOfficials(lat, lon, address);
+                    
+                } else {
+                    throw new Error('Could not find that address. Please check the address and try again.');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                loadingDiv.style.display = 'none';
+                showError(error.message || 'Could not fetch representatives. Please try the alternative databases below.');
+                showAlternatives();
+            }
+        }
+
+        async function fetchCiceroOfficials(lat, lon, address) {
+            // Cicero API endpoint for officials
+            const ciceroUrl = `https://cicero.azavea.com/v3.1/official?lat=${lat}&lon=${lon}&format=json&key=${CICERO_API_KEY}`;
+            
+            console.log('Fetching from Cicero API...');
+            let success = false;
+            let lastError = null;
+
+            // Try each CORS proxy until one works
+            for (let i = 0; i < CORS_PROXIES.length; i++) {
+                const proxy = CORS_PROXIES[currentProxyIndex];
+                const proxyUrl = proxy + encodeURIComponent(ciceroUrl);
+                
+                try {
+                    showStatus(`Connecting to database (attempt ${i + 1} of ${CORS_PROXIES.length})...`, 'info');
+                    console.log(`Trying proxy: ${proxy}`);
+                    
+                    const response = await fetch(proxyUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                        timeout: 10000
+                    });
+
+                    const text = await response.text();
+                    let data;
+                    
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        console.error('Failed to parse response:', text);
+                        throw new Error('Invalid response from API');
+                    }
+
+                    if (data.response && data.response.results) {
+                        displayCiceroResults(data, address);
+                        success = true;
+                        break;
+                    } else if (data.error) {
+                        throw new Error(data.error.message || 'API error occurred');
+                    }
+                    
+                } catch (error) {
+                    lastError = error;
+                    console.log(`Proxy ${currentProxyIndex} failed:`, error.message);
+                    currentProxyIndex = (currentProxyIndex + 1) % CORS_PROXIES.length;
+                }
+            }
+
+            if (!success) {
+                console.error('All CORS proxies failed');
+                document.getElementById('loadingDiv').style.display = 'none';
+                
+                if (lastError && lastError.message.includes('API key')) {
+                    showError('Invalid API key. Please check your Cicero API key.');
+                } else {
+                    showError('Could not connect to Cicero API. Please use the alternative databases below.');
+                }
+                showAlternatives();
+            }
+        }
+
+        function displayCiceroResults(data, address) {
+            const loadingDiv = document.getElementById('loadingDiv');
+            const resultsDiv = document.getElementById('resultsDiv');
+            
+            loadingDiv.style.display = 'none';
+            
+            try {
+                const officials = data.response.results.officials || [];
+                
+                if (officials.length > 0) {
+                    showStatus(`Found ${officials.length} representatives for your address`, 'success');
+                    console.log('Officials found:', officials);
+                    
+                    // Group officials by level
+                    const grouped = groupOfficialsByLevel(officials);
+                    
+                    // Display each level
+                    let html = '';
+                    for (const [level, levelOfficials] of Object.entries(grouped)) {
+                        if (levelOfficials.length > 0) {
+                            html += createLevelSection(level, levelOfficials);
+                        }
+                    }
+                    
+                    resultsDiv.innerHTML = html;
+                    
+                    // Add note about additional resources
+                    resultsDiv.innerHTML += `
+                        <div class="kmr-status info" style="margin-top: 20px;">
+                            For additional officials or more details, you can also check the alternative databases below.
+                        </div>
+                    `;
+                    
+                } else {
+                    showStatus('No representatives found for this address.', 'error');
+                    showAlternatives();
+                }
+                
+            } catch (error) {
+                console.error('Error displaying results:', error);
+                showError('Error displaying results. Please try the alternative databases.');
+                showAlternatives();
+            }
+        }
+
+        function groupOfficialsByLevel(officials) {
+            const groups = {
+                'Federal': [],
+                'State': [],
+                'County': [],
+                'City/Local': [],
+                'Special District': []
+            };
+            
+            officials.forEach(official => {
+                // Get office info
+                const office = official.office || {};
+                const officeName = office.name || '';
+                const district = office.district || {};
+                const districtType = district.district_type || '';
+                
+                // Categorize by office level
+                if (officeName.match(/president|vice president|senator|representative|congress/i) ||
+                    districtType.match(/federal|national/i)) {
+                    groups['Federal'].push(official);
+                } else if (officeName.match(/governor|lieutenant|attorney general|secretary of state|treasurer|comptroller|auditor|state /i) ||
+                           districtType.match(/state|legislative|assembly|senate/i)) {
+                    groups['State'].push(official);
+                } else if (officeName.match(/county|commissioner|sheriff/i) ||
+                           districtType.match(/county/i)) {
+                    groups['County'].push(official);
+                } else if (officeName.match(/mayor|city|town|council|alderman|clerk/i) ||
+                           districtType.match(/city|municipal|town|village/i)) {
+                    groups['City/Local'].push(official);
+                } else {
+                    groups['Special District'].push(official);
+                }
+            });
+            
+            return groups;
+        }
+
+        function createLevelSection(level, officials) {
+            let html = `
+                <div class="kmr-level-section">
+                    <h2 class="kmr-level-title">${level} Officials</h2>
+                    <div class="kmr-officials-grid">
+            `;
+            
+            officials.forEach(official => {
+                const lastName = official.last_name || '';
+                const firstName = official.first_name || '';
+                const fullName = `${firstName} ${lastName}`.trim() || 'Name Not Available';
+                
+                const office = official.office || {};
+                const officeName = office.name || 'Office Not Specified';
+                const district = office.district || {};
+                const districtName = district.district_id || '';
+                
+                const party = official.party || '';
+                const partyClass = party.toLowerCase().includes('democrat') ? 'party-democratic' :
+                                  party.toLowerCase().includes('republican') ? 'party-republican' :
+                                  'party-independent';
+                
+                // Contact info
+                const addresses = official.addresses || [];
+                const primaryAddress = addresses.find(a => a.address_type === 'district') || 
+                                      addresses.find(a => a.address_type === 'capitol') || 
+                                      addresses[0] || {};
+                
+                const phone = primaryAddress.phone || '';
+                const fax = primaryAddress.fax || '';
+                const email = official.email_addresses && official.email_addresses[0] || '';
+                const website = official.urls && official.urls[0] || '';
+                
+                // Photo
+                const photoUrl = official.photo_origin_url || '';
+                
+                html += `
+                    <div class="kmr-official-card">
+                        ${photoUrl ? `<img src="${photoUrl}" alt="${fullName}" class="kmr-official-photo" onerror="this.style.display='none'">` : ''}
+                        <div class="kmr-official-name">${fullName}</div>
+                        <div class="kmr-official-office">${officeName}</div>
+                        ${districtName ? `<div style="color: #666; font-size: 0.9em; margin-bottom: 10px;">District: ${districtName}</div>` : ''}
+                        ${party ? `<span class="kmr-official-party ${partyClass}">${party}</span>` : ''}
+                        
+                        <div class="kmr-official-contact">
+                            ${phone ? `<div class="kmr-contact-item"><strong>Phone:</strong> <a href="tel:${phone}">${phone}</a></div>` : ''}
+                            ${email ? `<div class="kmr-contact-item"><strong>Email:</strong> <a href="mailto:${email}">${email}</a></div>` : ''}
+                            ${website ? `<div class="kmr-contact-item"><strong>Website:</strong> <a href="${website}" target="_blank">Visit Site</a></div>` : ''}
+                            ${fax ? `<div class="kmr-contact-item"><strong>Fax:</strong> ${fax}</div>` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div></div>';
+            return html;
+        }
+
+        function showAlternatives() {
+            const alternativesDiv = document.getElementById('alternativesDiv');
+            const address = document.getElementById('addressInput').value;
+            const state = extractStateFromAddress(address);
+            
+            let html = `
+                <div class="kmr-alternatives">
+                    <h2>Alternative Lookup Tools</h2>
+                    <p style="margin-bottom: 20px;">Use these official databases to find your representatives:</p>
+            `;
+            
+            // State-specific tools
+            if (state) {
+                html += `<h3>Your State: ${state}</h3><div class="kmr-alt-grid">`;
+                
+                if (state === 'MD') {
+                    html += `
+                        <a href="https://www.maryland.gov/pages/nearme.aspx" target="_blank" class="kmr-alt-link">
+                            Maryland NearMe - All Officials
+                        </a>
+                        <a href="https://mgaleg.maryland.gov/mgawebsite/Members/District" target="_blank" class="kmr-alt-link">
+                            Maryland General Assembly
+                        </a>
+                        <a href="https://msa.maryland.gov/msa/mdmanual/07leg/html/gacty.html" target="_blank" class="kmr-alt-link">
+                            Maryland Counties Directory
+                        </a>
+                    `;
+                } else if (state === 'VA') {
+                    html += `
+                        <a href="https://whosmy.virginiageneralassembly.gov/" target="_blank" class="kmr-alt-link">
+                            Virginia Who's My Legislator
+                        </a>
+                        <a href="https://www.virginia.gov/agencies/" target="_blank" class="kmr-alt-link">
+                            Virginia Government Directory
+                        </a>
+                    `;
+                } else if (state === 'DC') {
+                    html += `
+                        <a href="https://dccouncil.gov/councilmembers/" target="_blank" class="kmr-alt-link">
+                            DC Council Members
+                        </a>
+                        <a href="https://anc.dc.gov/page/find-your-anc" target="_blank" class="kmr-alt-link">
+                            Find Your ANC Commissioner
+                        </a>
+                    `;
+                } else {
+                    html += `
+                        <a href="https://openstates.org/find_your_legislator/" target="_blank" class="kmr-alt-link">
+                            Find Your State Legislators
+                        </a>
+                    `;
+                }
+                
+                html += `</div>`;
+            }
+            
+            // National tools
+            html += `
+                <h3>Federal Officials</h3>
+                <div class="kmr-alt-grid">
+                    <a href="https://www.usa.gov/elected-officials" target="_blank" class="kmr-alt-link">
+                        USA.gov Official Directory
+                    </a>
+                    <a href="https://www.house.gov/representatives/find-your-representative" target="_blank" class="kmr-alt-link">
+                        Find Your U.S. Representative
+                    </a>
+                    <a href="https://www.senate.gov/senators/senators-contact.htm" target="_blank" class="kmr-alt-link">
+                        Find Your U.S. Senators
+                    </a>
+                    <a href="https://www.whitehouse.gov/administration/" target="_blank" class="kmr-alt-link">
+                        White House Administration
+                    </a>
+                </div>
+                
+                <h3>Local Officials</h3>
+                <div class="kmr-alt-grid">
+                    <a href="https://www.usmayors.org/mayors/meet-the-mayors/" target="_blank" class="kmr-alt-link">
+                        U.S. Conference of Mayors
+                    </a>
+                    <a href="https://www.naco.org/resources/county-explorer" target="_blank" class="kmr-alt-link">
+                        National Association of Counties
+                    </a>
+                    <a href="https://www.nlc.org/" target="_blank" class="kmr-alt-link">
+                        National League of Cities
+                    </a>
+                    <a href="https://ballotpedia.org/Main_Page" target="_blank" class="kmr-alt-link">
+                        Ballotpedia - Comprehensive Database
+                    </a>
+                </div>
+                
+                <h3>Additional Resources</h3>
+                <div class="kmr-alt-grid">
+                    <a href="https://www.commoncause.org/find-your-representative/" target="_blank" class="kmr-alt-link">
+                        Common Cause Directory
+                    </a>
+                    <a href="https://www.govtrack.us/congress/members" target="_blank" class="kmr-alt-link">
+                        GovTrack Congress Tracker
+                    </a>
+                    <a href="https://justfacts.votesmart.org/" target="_blank" class="kmr-alt-link">
+                        Vote Smart - Candidate Info
+                    </a>
+                </div>
             </div>
-            <div class="kmr-contact-info">
-              ${official.phone ? `<span>📞 ${official.phone}</span>` : ''}
-              ${official.email ? `<span>✉️ <a href="mailto:${official.email}">${official.email}</a></span>` : ''}
-              ${official.website ? `<span>🌐 <a href="${official.website}" target="_blank">Website</a></span>` : ''}
-            </div>
-          </div>
-        `;
-        totalCount++;
-      });
-      
-      html += '</div>';
-    }
-  });
-  
-  if (totalCount === 0) {
-    showFallbackLinks(resultsDiv, address);
-  } else {
-    html = html.replace('Your Elected Representatives', 
-                       `Your Elected Representatives (${totalCount} Found)`);
-    html += getManualLookupSection(address);
-    resultsDiv.innerHTML = html;
-  }
-}
+            `;
+            
+            alternativesDiv.innerHTML = html;
+        }
 
-function showFallbackLinks(resultsDiv, address) {
-  resultsDiv.innerHTML = `
-    <div class="kmr-alert kmr-alert-warning">
-      <strong>Automatic lookup unavailable</strong><br>
-      Please use the manual lookup tools below to find your representatives.
-    </div>
-    ${getManualLookupSection(address)}
-  `;
-}
+        function extractStateFromAddress(address) {
+            const statePattern = /\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/i;
+            const match = address.match(statePattern);
+            return match ? match[1].toUpperCase() : null;
+        }
 
-function getManualLookupSection(address) {
-  const addressLower = address.toLowerCase();
-  const isMD = /\bmd\b|maryland|baltimore|bethesda|rockville/i.test(addressLower);
-  const isVA = /\bva\b|virginia|arlington|alexandria|richmond/i.test(addressLower);
-  const isDC = /\bdc\b|district|washington\sd/i.test(addressLower);
-  
-  let stateLinks = '';
-  
-  if (isMD) {
-    stateLinks = `
-      <div class="kmr-link-card">
-        <a href="https://www.maryland.gov/pages/nearme.aspx" target="_blank">🦀 Maryland NearMe Services</a>
-      </div>
-      <div class="kmr-link-card">
-        <a href="https://mgaleg.maryland.gov/mgawebsite/Members/District" target="_blank">📍 Find MD Legislators</a>
-      </div>
-    `;
-  } else if (isVA) {
-    stateLinks = `
-      <div class="kmr-link-card">
-        <a href="https://www.virginia.gov/local-government/" target="_blank">🏛️ Virginia Local Government</a>
-      </div>
-      <div class="kmr-link-card">
-        <a href="https://whosmy.virginiageneralassembly.gov/" target="_blank">📍 Find VA Legislators</a>
-      </div>
-    `;
-  } else if (isDC) {
-    stateLinks = `
-      <div class="kmr-link-card">
-        <a href="https://dccouncil.gov/councilmembers/" target="_blank">🏛️ DC Council Members</a>
-      </div>
-      <div class="kmr-link-card">
-        <a href="https://anc.dc.gov/" target="_blank">📍 Find Your ANC</a>
-      </div>
-    `;
-  }
-  
-  return `
-    <div class="kmr-manual-section">
-      <div class="kmr-manual-title">Additional Lookup Tools</div>
-      <div class="kmr-link-grid">
-        ${stateLinks}
-        <div class="kmr-link-card">
-          <a href="https://www.usa.gov/elected-officials" target="_blank">🇺🇸 USA.gov Official Lookup</a>
-        </div>
-        <div class="kmr-link-card">
-          <a href="https://www.house.gov/representatives/find-your-representative" target="_blank">🏛️ Find U.S. Representative</a>
-        </div>
-        <div class="kmr-link-card">
-          <a href="https://www.senate.gov/senators/" target="_blank">🏛️ U.S. Senators</a>
-        </div>
-        <div class="kmr-link-card">
-          <a href="https://ballotpedia.org/Who_represents_me" target="_blank">📊 Ballotpedia</a>
-        </div>
-        <div class="kmr-link-card">
-          <a href="https://openstates.org/find_your_legislator/" target="_blank">📍 OpenStates</a>
-        </div>
-        <div class="kmr-link-card">
-          <a href="https://www.usmayors.org/mayors/meet-the-mayors" target="_blank">🏙️ Find Your Mayor</a>
-        </div>
-      </div>
-    </div>
-  `;
-}
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('statusMessage');
+            statusDiv.className = `kmr-status ${type}`;
+            statusDiv.textContent = message;
+            statusDiv.style.display = 'block';
+        }
 
-function showManualLookup() {
-  const resultsDiv = document.getElementById('kmr-results');
-  showFallbackLinks(resultsDiv, '');
-}
+        function showError(message) {
+            const resultsDiv = document.getElementById('resultsDiv');
+            resultsDiv.innerHTML = `<div class="kmr-error">${message}</div>`;
+            showStatus(message, 'error');
+        }
 
-document.getElementById('kmr-address').addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') findReps();
-});
-</script>
+        // Initialize on page load
+        window.addEventListener('load', () => {
+            console.log('Know My Rep widget loaded successfully');
+            console.log('Cicero API configured ✓');
+            console.log('Brand colors: #004aad (blue), #eb3a3a (red)');
+            console.log('Ready to search for representatives');
+        });
+    </script>
 </body>
 </html>
