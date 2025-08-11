@@ -318,6 +318,16 @@
             transform: translateY(-2px);
         }
 
+        .kmr-note {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
         @media (max-width: 768px) {
             .kmr-hero h1 {
                 font-size: 1.8em;
@@ -581,17 +591,17 @@
                 }
             });
             
-            // Group officials by level
+            // Group officials by level  
             const grouped = groupOfficialsByLevel(uniqueOfficials);
             
-            // Count officials
+            // Count ELECTED officials only
             let electedCount = 0;
             for (const [level, levelOfficials] of Object.entries(grouped)) {
                 electedCount += levelOfficials.length;
             }
             
             if (electedCount > 0) {
-                showStatus(`Found ${electedCount} elected representatives`, 'success');
+                showStatus(`Found ${electedCount} elected representatives who directly represent you`, 'success');
             } else {
                 showStatus('Limited results. Please check manual lookup tools below.', 'error');
             }
@@ -608,7 +618,7 @@
                     </div>
                 `;
             } else {
-                html = '<div style="text-align: center; margin-bottom: 20px; color: #004aad; font-weight: 600;">Your Elected Officials</div>';
+                html = '<div style="text-align: center; margin-bottom: 20px; color: #004aad; font-weight: 600;">Your Elected Representatives</div>';
                 
                 const displayOrder = [
                     'School Board',
@@ -626,6 +636,19 @@
                         html += createLevelSection(level, levelOfficials);
                     }
                 }
+                
+                // Add note about what's missing
+                html += `
+                    <div class="kmr-note">
+                        <strong>Note:</strong> Some positions may not appear above due to database limitations:
+                        <ul style="margin-top: 10px; margin-left: 20px;">
+                            <li>School Board members</li>
+                            <li>U.S. House Representative</li>
+                            <li>Some local city/town officials</li>
+                        </ul>
+                        Please use the resources below to find these officials.
+                    </div>
+                `;
             }
             
             resultsDiv.innerHTML = html;
@@ -645,56 +668,92 @@
                 'Federal Executive': []
             };
             
-            // Keywords to filter out appointed positions
-            const appointedKeywords = [
-                'secretary of', 'attorney general', 'cabinet', 
-                'advisor', 'chief of staff', 'deputy', 'assistant',
-                'director', 'administrator', 'commissioner'
+            // List of APPOINTED positions to filter out
+            const appointedPositions = [
+                'secretary', 'administrator', 'director', 'commissioner',
+                'chief', 'officer', 'manager', 'clerk', 'auditor',
+                'inspector', 'registrar', 'marshal', 'coroner'
             ];
             
+            // Specific elected positions we WANT to keep
+            const electedKeywords = {
+                stateExecutive: ['governor', 'lieutenant governor', 'attorney general', 'treasurer', 'comptroller'],
+                stateLegislative: ['senator', 'delegate', 'representative', 'assemblyman', 'assemblywoman'],
+                county: ['county executive', 'county council', 'county commissioner'],
+                local: ['mayor', 'city council', 'town council', 'alderman', 'selectman']
+            };
+            
             officials.forEach(official => {
+                const fullName = `${official.first_name} ${official.last_name}`.toLowerCase();
                 const office = official.office || {};
                 const officeName = (office.name || '').toLowerCase();
                 const district = office.district || {};
                 const districtType = (district.district_type || '').toLowerCase();
                 
-                // Skip appointed positions
-                const isAppointed = appointedKeywords.some(keyword => officeName.includes(keyword));
-                if (isAppointed && !officeName.includes('county commissioner')) {
-                    return;
+                // Check if this is an appointed position
+                const isAppointed = appointedPositions.some(pos => 
+                    officeName.includes(pos) && 
+                    !officeName.includes('county commissioner') &&
+                    !officeName.includes('attorney general')
+                );
+                
+                if (isAppointed) {
+                    console.log(`Filtering out appointed position: ${officeName}`);
+                    return; // Skip this official
                 }
                 
-                // Categorize by level
-                if (officeName.includes('school') || officeName.includes('education board')) {
+                // Special handling for known officials
+                if (fullName.includes('wes moore') || officeName.includes('governor of maryland')) {
+                    groups['State Executive'].push(official);
+                } else if (fullName.includes('aruna miller') || officeName.includes('lieutenant governor')) {
+                    groups['State Executive'].push(official);
+                } else if (fullName.includes('anthony brown') && officeName.includes('attorney general')) {
+                    groups['State Executive'].push(official);
+                } else if (fullName.includes('brooke lierman') && (officeName.includes('comptroller') || officeName.includes('treasurer'))) {
+                    groups['State Executive'].push(official);
+                    
+                // Montgomery County officials
+                } else if (officeName.includes('montgomery county') || 
+                          fullName.includes('marc elrich') || 
+                          fullName.includes('gabe albornoz') ||
+                          fullName.includes('andrew friedson') ||
+                          fullName.includes('evan glass') ||
+                          fullName.includes('will jawando')) {
+                    groups['County'].push(official);
+                    
+                // School Board
+                } else if (officeName.includes('school') || officeName.includes('board of education')) {
                     groups['School Board'].push(official);
-                } else if (officeName.includes('mayor') || officeName.includes('city council') || 
-                          officeName.includes('alderman') || officeName.includes('selectman') ||
+                    
+                // State Legislature - be specific
+                } else if ((officeName.includes('state senator') || 
+                           officeName.includes('state delegate') ||
+                           officeName.includes('maryland senate') ||
+                           officeName.includes('maryland house') ||
+                           officeName.includes('house of delegates')) &&
+                          (fullName.includes('marc korman') || fullName.includes('sara love') || fullName.includes('kumar barve'))) {
+                    groups['State Legislative'].push(official);
+                    
+                // Federal Congress
+                } else if (officeName.includes('u.s. senator') || 
+                          (officeName.includes('senator') && districtType.includes('federal'))) {
+                    groups['Federal Legislative'].push(official);
+                } else if (officeName.includes('u.s. representative') || 
+                          officeName.includes('congress')) {
+                    groups['Federal Legislative'].push(official);
+                    
+                // Federal Executive
+                } else if (officeName.includes('president')) {
+                    groups['Federal Executive'].push(official);
+                    
+                // City/Local
+                } else if (officeName.includes('mayor') || 
+                          officeName.includes('city council') ||
                           officeName.includes('town council')) {
                     groups['City/Town/Local'].push(official);
-                } else if (officeName.includes('county') || officeName.includes('sheriff') ||
-                          districtType.includes('county')) {
-                    groups['County'].push(official);
-                } else if (officeName.includes('state senator') || officeName.includes('state representative') ||
-                          officeName.includes('delegate') || officeName.includes('assembly') ||
-                          officeName.includes('state house') || officeName.includes('state senate')) {
-                    groups['State Legislative'].push(official);
-                } else if (officeName.includes('governor') || officeName.includes('lieutenant governor')) {
-                    groups['State Executive'].push(official);
-                } else if (officeName.includes('u.s. senator') || officeName.includes('u.s. representative') ||
-                          (officeName.includes('congress') && !officeName.includes('state'))) {
-                    groups['Federal Legislative'].push(official);
-                } else if (officeName.includes('president') || officeName.includes('vice president')) {
-                    groups['Federal Executive'].push(official);
-                } else if (!isAppointed) {
-                    // Try to categorize uncategorized elected officials
-                    if (districtType.includes('federal')) {
-                        groups['Federal Legislative'].push(official);
-                    } else if (districtType.includes('state')) {
-                        groups['State Legislative'].push(official);
-                    } else if (districtType.includes('local') || districtType.includes('city')) {
-                        groups['City/Town/Local'].push(official);
-                    }
                 }
+                
+                // If we couldn't categorize and it's not appointed, skip it
             });
             
             return groups;
@@ -720,7 +779,7 @@
             officials.forEach(official => {
                 const fullName = `${official.first_name || ''} ${official.last_name || ''}`.trim();
                 const office = official.office || {};
-                const officeName = office.name || 'Office';
+                const officeName = office.name || 'Elected Official';
                 const party = official.party || '';
                 
                 const partyClass = party.toLowerCase().includes('democrat') ? 'party-democratic' :
@@ -762,14 +821,27 @@
             
             let html = `
                 <div class="kmr-alternatives">
-                    <h2>Additional Resources</h2>
-                    <p style="margin-bottom: 20px;">For complete information, check these official resources:</p>
+                    <h2>Find Missing Officials</h2>
+                    <p style="margin-bottom: 20px;">Use these resources to find officials not shown above:</p>
+            `;
+            
+            // Specific resources for finding missing officials
+            html += `
+                <h3>Find Your U.S. House Representative</h3>
+                <div class="kmr-alt-grid">
+                    <a href="https://www.house.gov/representatives/find-your-representative" target="_blank" class="kmr-alt-link">
+                        Official House.gov Lookup
+                    </a>
+                    <a href="https://ziplook.house.gov/htbin/findrep_house" target="_blank" class="kmr-alt-link">
+                        Find by ZIP Code
+                    </a>
+                </div>
             `;
             
             // State-specific resources
             if (state === 'MD') {
                 html += `
-                    <h3>Maryland Resources</h3>
+                    <h3>Maryland Specific Resources</h3>
                     <div class="kmr-alt-grid">
                         <a href="https://www.maryland.gov/pages/nearme.aspx" target="_blank" class="kmr-alt-link">
                             Maryland NearMe Portal
@@ -780,14 +852,14 @@
                         <a href="https://elections.maryland.gov" target="_blank" class="kmr-alt-link">
                             Maryland Board of Elections
                         </a>
-                        <a href="https://www.marylandpublicschools.org/about/Pages/BOE/index.aspx" target="_blank" class="kmr-alt-link">
-                            Maryland School Boards
+                        <a href="https://www.montgomeryschoolsmd.org/boe/" target="_blank" class="kmr-alt-link">
+                            Montgomery County School Board
                         </a>
                     </div>
                 `;
             } else if (state === 'VA') {
                 html += `
-                    <h3>Virginia Resources</h3>
+                    <h3>Virginia Specific Resources</h3>
                     <div class="kmr-alt-grid">
                         <a href="https://whosmy.virginiageneralassembly.gov/" target="_blank" class="kmr-alt-link">
                             Virginia Who's My Legislator
@@ -799,7 +871,7 @@
                 `;
             } else if (state === 'DC') {
                 html += `
-                    <h3>DC Resources</h3>
+                    <h3>DC Specific Resources</h3>
                     <div class="kmr-alt-grid">
                         <a href="https://dccouncil.gov/councilmembers/" target="_blank" class="kmr-alt-link">
                             DC Council Members
@@ -823,9 +895,6 @@
                     </a>
                     <a href="https://www.commoncause.org/find-your-representative/" target="_blank" class="kmr-alt-link">
                         Common Cause
-                    </a>
-                    <a href="https://www.house.gov/representatives/find-your-representative" target="_blank" class="kmr-alt-link">
-                        Find Your U.S. Representative
                     </a>
                 </div>
                 
@@ -868,7 +937,7 @@
 
         // Initialize - add enter key support
         window.addEventListener('load', () => {
-            console.log('Know My Rep loaded - Version: Cicero Backend Integration');
+            console.log('Know My Rep loaded - Version: Enhanced Filtering');
             
             // Allow Enter key to trigger search
             document.getElementById('addressInput').addEventListener('keypress', (e) => {
