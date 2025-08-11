@@ -359,7 +359,7 @@
     <div class="kmr-container">
         <div class="kmr-hero">
             <h1>Know My Rep</h1>
-            <p>Find All Your Elected Representatives</p>
+            <p>Find ALL Your Elected Representatives - Local to Federal</p>
         </div>
 
         <div class="kmr-search-box">
@@ -464,10 +464,10 @@
         }
 
         async function fetchCiceroOfficials(lat, lon, address) {
-            // Cicero API endpoint for officials
-            const ciceroUrl = `https://cicero.azavea.com/v3.1/official?lat=${lat}&lon=${lon}&format=json&key=${CICERO_API_KEY}`;
+            // Cicero API endpoint - using 'includechildren=1' to get ALL levels of officials
+            const ciceroUrl = `https://cicero.azavea.com/v3.1/official?lat=${lat}&lon=${lon}&format=json&key=${CICERO_API_KEY}&includechildren=1&order=asc`;
             
-            console.log('Fetching from Cicero API...');
+            console.log('Fetching ALL elected officials from Cicero API...');
             let success = false;
             let lastError = null;
 
@@ -536,16 +536,42 @@
                 const officials = data.response.results.officials || [];
                 
                 if (officials.length > 0) {
-                    showStatus(`Found ${officials.length} representatives for your address`, 'success');
-                    console.log('Officials found:', officials);
+                    console.log('Total officials found:', officials.length);
+                    
+                    // Log office names for debugging
+                    officials.forEach(off => {
+                        const officeName = off.office?.name || 'Unknown';
+                        console.log(`Official: ${off.first_name} ${off.last_name} - ${officeName}`);
+                    });
                     
                     // Group officials by level
                     const grouped = groupOfficialsByLevel(officials);
                     
-                    // Display each level
-                    let html = '';
+                    // Count elected officials
+                    let electedCount = 0;
                     for (const [level, levelOfficials] of Object.entries(grouped)) {
-                        if (levelOfficials.length > 0) {
+                        electedCount += levelOfficials.length;
+                    }
+                    
+                    showStatus(`Found ${electedCount} elected representatives for your address`, 'success');
+                    console.log(`Filtered: ${officials.length} total → ${electedCount} elected officials`);
+                    
+                    // Display each level - LOCAL FIRST, FEDERAL LAST
+                    let html = '<div style="text-align: center; margin-bottom: 20px; color: #004aad; font-weight: 600;">Showing ELECTED Officials Only (Local → State → Federal)</div>';
+                    
+                    const displayOrder = [
+                        'School Board',
+                        'City/Town/Local', 
+                        'County', 
+                        'State Legislative',
+                        'State Executive',
+                        'Federal Legislative',
+                        'Federal Executive'
+                    ];
+                    
+                    for (const level of displayOrder) {
+                        const levelOfficials = grouped[level];
+                        if (levelOfficials && levelOfficials.length > 0) {
                             html += createLevelSection(level, levelOfficials);
                         }
                     }
@@ -555,9 +581,13 @@
                     // Add note about additional resources
                     resultsDiv.innerHTML += `
                         <div class="kmr-status info" style="margin-top: 20px;">
-                            For additional officials or more details, you can also check the alternative databases below.
+                            <strong>Missing someone?</strong> Some local positions (water board, fire district, etc.) may not be in the database. 
+                            Check the alternative databases below for complete coverage.
                         </div>
                     `;
+                    
+                    // Show alternatives for comprehensive coverage
+                    showAlternatives();
                     
                 } else {
                     showStatus('No representatives found for this address.', 'error');
@@ -573,35 +603,98 @@
 
         function groupOfficialsByLevel(officials) {
             const groups = {
-                'Federal': [],
-                'State': [],
+                'School Board': [],
+                'City/Town/Local': [],
                 'County': [],
-                'City/Local': [],
-                'Special District': []
+                'State Legislative': [],
+                'State Executive': [],
+                'Federal Legislative': [],
+                'Federal Executive': []
             };
+            
+            // List of appointed positions to filter out
+            const appointedPositions = [
+                'attorney general', 'chief', 'director', 'administrator',
+                'cabinet', 'advisor', 'counsel', 'aide', 'staff',
+                'appointee', 'nominated', 'appointed', 'secretary of',
+                'deputy', 'assistant', 'special assistant', 'chief of staff'
+            ];
+            
+            // List of definitely elected positions
+            const electedPositions = [
+                'president', 'vice president', 'governor', 'lt governor', 'lieutenant governor',
+                'senator', 'representative', 'congressman', 'congresswoman', 'delegate',
+                'mayor', 'council', 'commissioner', 'sheriff', 'clerk', 'treasurer',
+                'comptroller', 'auditor', 'board', 'trustee', 'supervisor', 'alderman',
+                'selectman', 'freeholder', 'legislator', 'assemblyman', 'assemblywoman'
+            ];
             
             officials.forEach(official => {
                 // Get office info
                 const office = official.office || {};
-                const officeName = office.name || '';
+                const officeName = (office.name || '').toLowerCase();
                 const district = office.district || {};
-                const districtType = district.district_type || '';
+                const districtType = (district.district_type || '').toLowerCase();
+                const districtName = (district.district_id || '').toLowerCase();
                 
-                // Categorize by office level
-                if (officeName.match(/president|vice president|senator|representative|congress/i) ||
-                    districtType.match(/federal|national/i)) {
-                    groups['Federal'].push(official);
-                } else if (officeName.match(/governor|lieutenant|attorney general|secretary of state|treasurer|comptroller|auditor|state /i) ||
-                           districtType.match(/state|legislative|assembly|senate/i)) {
-                    groups['State'].push(official);
-                } else if (officeName.match(/county|commissioner|sheriff/i) ||
+                // Check if it's an elected position
+                // First check if it's definitely elected
+                const isDefinitelyElected = electedPositions.some(term => officeName.includes(term));
+                
+                // Check if it's definitely appointed
+                const isDefinitelyAppointed = appointedPositions.some(term => officeName.includes(term));
+                
+                // Skip appointed positions unless they're exceptions (like elected sheriffs)
+                if (isDefinitelyAppointed && !isDefinitelyElected) {
+                    console.log('Filtering out appointed position:', officeName);
+                    return;
+                }
+                
+                // Include if it's definitely elected or not clearly appointed
+                if (!isDefinitelyElected && !officeName.match(/council|board|mayor|supervisor|trustee|sheriff|clerk|treasurer|auditor|comptroller/i)) {
+                    // If we can't determine, skip it to be safe
+                    if (!districtType.match(/legislative|electoral/i)) {
+                        console.log('Skipping unclear position:', officeName);
+                        return;
+                    }
+                }
+                
+                // Categorize by office level - LOCAL FIRST
+                if (officeName.match(/school|education|board of ed/i) || 
+                    districtType.match(/school|education/i)) {
+                    groups['School Board'].push(official);
+                } else if (officeName.match(/mayor|city council|town council|alderman|selectman|village|city clerk|town clerk|city manager/i) ||
+                           districtType.match(/city|municipal|town|village|ward|precinct/i)) {
+                    groups['City/Town/Local'].push(official);
+                } else if (officeName.match(/county executive|county council|sheriff|county commissioner|county clerk|register of wills|state's attorney|county judge|orphans' court/i) ||
                            districtType.match(/county/i)) {
                     groups['County'].push(official);
-                } else if (officeName.match(/mayor|city|town|council|alderman|clerk/i) ||
-                           districtType.match(/city|municipal|town|village/i)) {
-                    groups['City/Local'].push(official);
+                } else if (officeName.match(/state senator|state representative|delegate|assemblyman|assemblywoman|state house|state senate|house of delegates/i) ||
+                           districtType.match(/legislative|assembly|state house|state senate|house of delegates/i)) {
+                    groups['State Legislative'].push(official);
+                } else if (officeName.match(/governor|lieutenant governor|lt governor|comptroller|treasurer|state auditor|secretary of state/i) && 
+                           !officeName.match(/deputy|assistant|staff/i)) {
+                    groups['State Executive'].push(official);
+                } else if (officeName.match(/u\.s\.|us |united states|congressman|congresswoman|senator|representative/i) && 
+                           !officeName.match(/state/i)) {
+                    groups['Federal Legislative'].push(official);
+                } else if (officeName.match(/president|vice president/i) && 
+                           !officeName.match(/board|council|assistant|deputy/i)) {
+                    groups['Federal Executive'].push(official);
                 } else {
-                    groups['Special District'].push(official);
+                    // Check if it seems elected based on keywords
+                    if (officeName.match(/council|board|commission|supervisor|trustee|judge|justice/i) && 
+                        !officeName.match(/staff|aide|clerk|deputy|assistant/i)) {
+                        // Try to determine the level
+                        if (districtType.match(/local|municipal|city/i)) {
+                            groups['City/Town/Local'].push(official);
+                        } else if (districtType.match(/county/i)) {
+                            groups['County'].push(official);
+                        } else {
+                            groups['City/Town/Local'].push(official); // Default to local
+                        }
+                    }
+                    // Skip anything else that might be appointed
                 }
             });
             
@@ -609,9 +702,20 @@
         }
 
         function createLevelSection(level, officials) {
+            // Custom titles for better clarity
+            const levelTitles = {
+                'School Board': '🏫 School Board Officials',
+                'City/Town/Local': '🏘️ City/Town/Local Officials',
+                'County': '🏛️ County Officials',
+                'State Legislative': '🏛️ State Legislature',
+                'State Executive': '🏛️ State Executive Officials',
+                'Federal Legislative': '🇺🇸 U.S. Congress',
+                'Federal Executive': '🇺🇸 Federal Executive'
+            };
+            
             let html = `
                 <div class="kmr-level-section">
-                    <h2 class="kmr-level-title">${level} Officials</h2>
+                    <h2 class="kmr-level-title">${levelTitles[level] || level} (${officials.length})</h2>
                     <div class="kmr-officials-grid">
             `;
             
@@ -679,7 +783,7 @@
             
             // State-specific tools
             if (state) {
-                html += `<h3>Your State: ${state}</h3><div class="kmr-alt-grid">`;
+                html += `<h3>Your State: ${state} - Local Officials</h3><div class="kmr-alt-grid">`;
                 
                 if (state === 'MD') {
                     html += `
@@ -692,6 +796,12 @@
                         <a href="https://msa.maryland.gov/msa/mdmanual/07leg/html/gacty.html" target="_blank" class="kmr-alt-link">
                             Maryland Counties Directory
                         </a>
+                        <a href="https://www.marylandpublicschools.org/about/Pages/BOE/index.aspx" target="_blank" class="kmr-alt-link">
+                            Maryland School Boards
+                        </a>
+                        <a href="https://elections.maryland.gov/elections/index.html" target="_blank" class="kmr-alt-link">
+                            Maryland Board of Elections
+                        </a>
                     `;
                 } else if (state === 'VA') {
                     html += `
@@ -700,6 +810,9 @@
                         </a>
                         <a href="https://www.virginia.gov/agencies/" target="_blank" class="kmr-alt-link">
                             Virginia Government Directory
+                        </a>
+                        <a href="https://www.vsba.org/school-boards" target="_blank" class="kmr-alt-link">
+                            Virginia School Boards
                         </a>
                     `;
                 } else if (state === 'DC') {
@@ -710,11 +823,17 @@
                         <a href="https://anc.dc.gov/page/find-your-anc" target="_blank" class="kmr-alt-link">
                             Find Your ANC Commissioner
                         </a>
+                        <a href="https://dcps.dc.gov/" target="_blank" class="kmr-alt-link">
+                            DC School Board
+                        </a>
                     `;
                 } else {
                     html += `
                         <a href="https://openstates.org/find_your_legislator/" target="_blank" class="kmr-alt-link">
                             Find Your State Legislators
+                        </a>
+                        <a href="https://www.nsba.org/state-associations" target="_blank" class="kmr-alt-link">
+                            Find Your School Board
                         </a>
                     `;
                 }
@@ -753,6 +872,25 @@
                     </a>
                     <a href="https://ballotpedia.org/Main_Page" target="_blank" class="kmr-alt-link">
                         Ballotpedia - Comprehensive Database
+                    </a>
+                </div>
+                
+                <h3>Hyper-Local Officials (May Not Appear Above)</h3>
+                <div class="kmr-alt-grid">
+                    <a href="https://www.nsba.org/state-associations" target="_blank" class="kmr-alt-link">
+                        School Board Members
+                    </a>
+                    <a href="https://www.sheriffs.org/sheriffs-offices" target="_blank" class="kmr-alt-link">
+                        County Sheriffs
+                    </a>
+                    <a href="https://www.naco.org/resources/county-explorer" target="_blank" class="kmr-alt-link">
+                        County Commissioners
+                    </a>
+                    <a href="https://www.narc.org/find-your-region/" target="_blank" class="kmr-alt-link">
+                        Regional Councils
+                    </a>
+                    <a href="https://www.nacdnet.org/general-resources/conservation-district-directory/" target="_blank" class="kmr-alt-link">
+                        Soil & Water Districts
                     </a>
                 </div>
                 
