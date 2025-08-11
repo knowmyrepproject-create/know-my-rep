@@ -675,20 +675,54 @@
                 'inspector', 'registrar', 'marshal', 'coroner'
             ];
             
-            // Specific elected positions we WANT to keep
-            const electedKeywords = {
-                stateExecutive: ['governor', 'lieutenant governor', 'attorney general', 'treasurer', 'comptroller'],
-                stateLegislative: ['senator', 'delegate', 'representative', 'assemblyman', 'assemblywoman'],
-                county: ['county executive', 'county council', 'county commissioner'],
-                local: ['mayor', 'city council', 'town council', 'alderman', 'selectman']
+            // Known Montgomery County Council members and their proper titles
+            const montgomeryCouncil = {
+                'gabe albornoz': 'Montgomery County Council Member (At-Large)',
+                'marc elrich': 'Montgomery County Executive',
+                'andrew friedson': 'Montgomery County Council Member (District 1)',
+                'evan glass': 'Montgomery County Council Member (At-Large)',
+                'will jawando': 'Montgomery County Council Member (At-Large)',
+                'sidney katz': 'Montgomery County Council Member (District 3)',
+                'nancy navarro': 'Montgomery County Council Member (District 4)',
+                'tom hucker': 'Montgomery County Council Member (District 5)',
+                'craig rice': 'Montgomery County Council Member (District 2)',
+                'hans riemer': 'Montgomery County Council Member (At-Large)',
+                'kate stewart': 'Montgomery County Council Member (District 4)',
+                'kristin mink': 'Montgomery County Council Member (District 5)',
+                'marilyn balcombe': 'Montgomery County Council Member (District 2)',
+                'natali fani-gonzález': 'Montgomery County Council Member (District 6)',
+                'laurie-anne sayles': 'Montgomery County Council Member (At-Large)'
+            };
+            
+            // Known State officials
+            const stateOfficials = {
+                'wes moore': 'Governor of Maryland',
+                'aruna miller': 'Lieutenant Governor of Maryland',
+                'anthony brown': 'Attorney General of Maryland',
+                'brooke lierman': 'Comptroller of Maryland'
             };
             
             officials.forEach(official => {
                 const fullName = `${official.first_name} ${official.last_name}`.toLowerCase();
                 const office = official.office || {};
-                const officeName = (office.name || '').toLowerCase();
+                let officeName = (office.name || '').toLowerCase();
                 const district = office.district || {};
                 const districtType = (district.district_type || '').toLowerCase();
+                
+                // Fix office names for known officials
+                if (montgomeryCouncil[fullName]) {
+                    official.office.name = montgomeryCouncil[fullName];
+                    officeName = official.office.name.toLowerCase();
+                } else if (stateOfficials[fullName]) {
+                    official.office.name = stateOfficials[fullName];
+                    officeName = official.office.name.toLowerCase();
+                } else if (officeName === 'office' || officeName === '') {
+                    // Try to determine proper title from other context
+                    if (fullName.includes('korman') || fullName.includes('love') || fullName.includes('barve')) {
+                        official.office.name = 'Maryland State Legislator';
+                        officeName = official.office.name.toLowerCase();
+                    }
+                }
                 
                 // Check if this is an appointed position
                 const isAppointed = appointedPositions.some(pos => 
@@ -698,40 +732,52 @@
                 );
                 
                 if (isAppointed) {
-                    console.log(`Filtering out appointed position: ${officeName}`);
+                    console.log(`Filtering out appointed position: ${fullName} - ${officeName}`);
                     return; // Skip this official
                 }
                 
-                // Special handling for known officials
-                if (fullName.includes('wes moore') || officeName.includes('governor of maryland')) {
-                    groups['State Executive'].push(official);
-                } else if (fullName.includes('aruna miller') || officeName.includes('lieutenant governor')) {
-                    groups['State Executive'].push(official);
-                } else if (fullName.includes('anthony brown') && officeName.includes('attorney general')) {
-                    groups['State Executive'].push(official);
-                } else if (fullName.includes('brooke lierman') && (officeName.includes('comptroller') || officeName.includes('treasurer'))) {
+                // Categorize officials
+                
+                // State Executive
+                if (stateOfficials[fullName] || 
+                    officeName.includes('governor') || 
+                    officeName.includes('lieutenant governor') ||
+                    (officeName.includes('attorney general') && fullName.includes('anthony brown')) ||
+                    (officeName.includes('comptroller') && fullName.includes('brooke lierman'))) {
                     groups['State Executive'].push(official);
                     
-                // Montgomery County officials
-                } else if (officeName.includes('montgomery county') || 
-                          fullName.includes('marc elrich') || 
-                          fullName.includes('gabe albornoz') ||
-                          fullName.includes('andrew friedson') ||
-                          fullName.includes('evan glass') ||
-                          fullName.includes('will jawando')) {
+                // Montgomery County officials - PUT IN COUNTY CATEGORY
+                } else if (montgomeryCouncil[fullName] || 
+                           officeName.includes('montgomery county') || 
+                           officeName.includes('county council') ||
+                           officeName.includes('county executive')) {
                     groups['County'].push(official);
                     
                 // School Board
                 } else if (officeName.includes('school') || officeName.includes('board of education')) {
                     groups['School Board'].push(official);
                     
-                // State Legislature - be specific
+                // State Legislature - only actual legislators
                 } else if ((officeName.includes('state senator') || 
                            officeName.includes('state delegate') ||
                            officeName.includes('maryland senate') ||
                            officeName.includes('maryland house') ||
-                           officeName.includes('house of delegates')) &&
-                          (fullName.includes('marc korman') || fullName.includes('sara love') || fullName.includes('kumar barve'))) {
+                           officeName.includes('house of delegates') ||
+                           officeName.includes('state legislator')) &&
+                          (fullName.includes('marc korman') || 
+                           fullName.includes('sara love') || 
+                           fullName.includes('kumar barve') ||
+                           fullName.includes('cheryl kagan') ||
+                           fullName.includes('ben kramer') ||
+                           fullName.includes('ariana kelly'))) {
+                    if (official.office.name === 'Maryland State Legislator') {
+                        // Try to be more specific if possible
+                        if (fullName.includes('love')) {
+                            official.office.name = 'Maryland State Senator';
+                        } else {
+                            official.office.name = 'Maryland House of Delegates';
+                        }
+                    }
                     groups['State Legislative'].push(official);
                     
                 // Federal Congress
@@ -746,14 +792,17 @@
                 } else if (officeName.includes('president')) {
                     groups['Federal Executive'].push(official);
                     
-                // City/Local
-                } else if (officeName.includes('mayor') || 
+                // City/Local (actual city/town officials, not county)
+                } else if ((officeName.includes('mayor') && !officeName.includes('county')) ||
                           officeName.includes('city council') ||
                           officeName.includes('town council')) {
                     groups['City/Town/Local'].push(official);
                 }
                 
-                // If we couldn't categorize and it's not appointed, skip it
+                // Log any uncategorized officials for debugging
+                else if (!isAppointed && officeName !== 'office' && officeName !== '') {
+                    console.log(`Uncategorized official: ${fullName} - ${officeName}`);
+                }
             });
             
             return groups;
@@ -937,7 +986,7 @@
 
         // Initialize - add enter key support
         window.addEventListener('load', () => {
-            console.log('Know My Rep loaded - Version: Enhanced Filtering');
+            console.log('Know My Rep loaded - Version: Enhanced with Proper Titles');
             
             // Allow Enter key to trigger search
             document.getElementById('addressInput').addEventListener('keypress', (e) => {
