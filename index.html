@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Know My Rep - Find all your elected officials instantly">
+    <title>Know My Rep - Find Your Representatives</title>
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #ffffff;
+      color: #000000;
+      line-height: 1.6;
+    }
+    
+    .kmr-container {
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    
+    .kmr-hero {
+      background: linear-gradient(135deg, #004aad 0%, #0056c7 100%);
+      padding: 60px 20px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .kmr-hero::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+      animation: pulse 15s ease-in-out infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.1); }
+    }
+    
+    .kmr-hero h1 {
+      font-size: 48px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 12px;
+      letter-spacing: -1px;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .kmr-hero p {
+      font-size: 18px;
+      color: rgba(255,255,255,0.95);
+      font-weight: 400;
+      position: relative;
+      z-index: 1;
+    }
+    
+    .kmr-search-section {
+      background: #f8f9fa;
+      padding: 40px 20px;
+      border-bottom: 3px solid #004aad;
+    }
+    
+    .kmr-search-container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+    
+    .kmr-input {
+      width: 100%;
+      padding: 18px 20px;
+      font-size: 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 12px;
+      background: #ffffff;
+      transition: all 0.3s ease;
+      margin-bottom: 20px;
+    }
+    
+    .kmr-input:focus {
+      outline: none;
+      border-color: #004aad;
+      box-shadow: 0 0 0 4px rgba(0, 74, 173, 0.1);
+    }
+    
+    .kmr-btn-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    
+    .kmr-btn {
+      flex: 1;
+      min-width: 200px;
+      padding: 16px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .kmr-btn-primary {
+      background: #eb3a3a;
+      color: #ffffff;
+    }
+    
+    .kmr-btn-primary:hover {
+      background: #d62828;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(235, 58, 58, 0.3);
+    }
+    
+    .kmr-btn-secondary {
+      background: #004aad;
+      color: #ffffff;
+    }
+    
+    .kmr-btn-secondary:hover {
+      background: #003a8c;
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0, 74, 173, 0.3);
+    }
+    
+    .kmr-results {
+      padding: 40px 20px;
+      min-height: 200px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .kmr-loading {
+      text-align: center;
+      padding: 60px 20px;
+    }
+    
+    .kmr-spinner {
+      width: 60px;
+      height: 60px;
+      border: 4px solid #e0e0e0;
+      border-top-color: #004aad;
+      border-radius: 50%;
+      margin: 0 auto 20px;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    .kmr-results-header {
+      font-size: 32px;
+      font-weight: 700;
+      color: #004aad;
+      margin-bottom: 30px;
+      padding-bottom: 15px;
+      border-bottom: 3px solid #eb3a3a;
+    }
+    
+    .kmr-category {
+      margin-bottom: 40px;
+    }
+    
+    .kmr-category-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #000000;
+      margin-bottom: 20px;
+      padding-left: 15px;
+      border-left: 5px solid #eb3a3a;
+    }
+    
+    .kmr-official-card {
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 15px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+      border-left: 4px solid #004aad;
+    }
+    
+    .kmr-official-card:hover {
+      transform: translateX(8px);
+      box-shadow: 0 8px 20px rgba(0, 74, 173, 0.1);
+    }
+    
+    .kmr-official-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #004aad;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    
+    .kmr-official-name {
+      font-size: 20px;
+      font-weight: 700;
+      color: #000000;
+    }
+    
+    .kmr-party-badge {
+      display: inline-block;
+      padding: 4px 12px;
+      background: #004aad;
+      color: #ffffff;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 12px;
+    }
+    
+    .kmr-party-badge.republican {
+      background: #eb3a3a;
+    }
+    
+    .kmr-contact-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      font-size: 14px;
+      color: #666;
+      margin-top: 12px;
+    }
+    
+    .kmr-contact-item a {
+      color: #004aad;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .kmr-contact-item a:hover {
+      color: #eb3a3a;
+    }
+    
+    .kmr-alert {
+      padding: 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      font-size: 15px;
+    }
+    
+    .kmr-alert-info {
+      background: #e3f2fd;
+      border-left: 5px solid #004aad;
+      color: #004aad;
+    }
+    
+    .kmr-alert-warning {
+      background: #fff3cd;
+      border-left: 5px solid #ffc107;
+      color: #856404;
+    }
+    
+    .kmr-alert-error {
+      background: #ffebee;
+      border-left: 5px solid #eb3a3a;
+      color: #c62828;
+    }
+    
+    .kmr-manual-section {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 30px;
+      margin-top: 30px;
+    }
+    
+    .kmr-manual-title {
+      font-size: 24px;
+      font-weight: 600;
+      color: #004aad;
+      margin-bottom: 20px;
+    }
+    
+    .kmr-link-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    
+    .kmr-link-card {
+      background: #ffffff;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+      padding: 15px;
+      transition: all 0.3s ease;
+    }
+    
+    .kmr-link-card:hover {
+      border-color: #004aad;
+      box-shadow: 0 4px 12px rgba(0, 74, 173, 0.1);
+    }
+    
+    .kmr-link-card a {
+      color: #004aad;
+      text-decoration: none;
+      font-weight: 600;
+      display: block;
+    }
+    
+    .kmr-link-card a:hover {
+      color: #eb3a3a;
+    }
+    
+    .kmr-footer {
+      background: #004aad;
+      color: #ffffff;
+      text-align: center;
+      padding: 20px;
+      margin-top: 40px;
+      font-size: 14px;
+    }
+    
+    @media (max-width: 768px) {
+      .kmr-hero h1 {
+        font-size: 32px;
+      }
+      
+      .kmr-btn-group {
+        flex-direction: column;
+      }
+      
+      .kmr-btn {
+        width: 100%;
+        min-width: auto;
+      }
+      
+      .kmr-official-card:hover {
+        transform: none;
+      }
+    }
+    </style>
+</head>
+<body>
+<div class="kmr-container">
+  <div class="kmr-hero">
+    <h1>KNOW MY REP</h1>
+    <p>Find all your elected officials in seconds</p>
+  </div>
+  
+  <div class="kmr-search-section">
+    <div class="kmr-search-container">
+      <input 
+        type="text" 
+        id="kmr-address" 
+        class="kmr-input"
+        placeholder="Enter your full address with ZIP code"
+        autocomplete="street-address"
+      />
+      <div class="kmr-btn-group">
+        <button class="kmr-btn kmr-btn-primary" onclick="findReps()">
+          Find My Representatives
+        </button>
+        <button class="kmr-btn kmr-btn-secondary" onclick="showManualLookup()">
+          Manual Lookup
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <div id="kmr-results" class="kmr-results"></div>
+  
+  <div class="kmr-footer">
+    Powered by Know My Rep © 2025 | Data from Cicero API & Official Government Sources
+  </div>
+</div>
+
+<script>
+const CICERO_API_KEY = 'd568c229f2cda320008fb0452cb5b318db280e05';
+const CICERO_API_BASE = 'https://cicero.azavea.com/v3.1';
+
+async function findReps() {
+  const address = document.getElementById('kmr-address').value.trim();
+  const resultsDiv = document.getElementById('kmr-results');
+  
+  if (!address) {
+    resultsDiv.innerHTML = `
+      <div class="kmr-alert kmr-alert-error">
+        <strong>⚠️ Address Required</strong><br>
+        Please enter your complete address including ZIP code.
+      </div>
+    `;
+    return;
+  }
+  
+  resultsDiv.innerHTML = `
+    <div class="kmr-loading">
+      <div class="kmr-spinner"></div>
+      <div>Finding your representatives...</div>
+    </div>
+  `;
+  
+  try {
+    const response = await fetch(
+      `${CICERO_API_BASE}/legislative_district?search_address=${encodeURIComponent(address)}&format=json&key=${CICERO_API_KEY}`
+    );
+    
+    if (!response.ok) throw new Error('API Error');
+    
+    const data = await response.json();
+    
+    if (data.error || !data.response?.results?.[0]?.districts) {
+      showFallbackLinks(resultsDiv, address);
+      return;
+    }
+    
+    const districts = data.response.results[0].districts;
+    const officials = await fetchAllOfficials(districts);
+    displayOfficials(officials, data.response.results[0].match_addr || address, resultsDiv);
+    
+  } catch (error) {
+    console.error('Error:', error);
+    showFallbackLinks(resultsDiv, address);
+  }
+}
+
+async function fetchAllOfficials(districts) {
+  const officials = { federal: [], state: [], county: [], local: [] };
+  
+  for (const district of districts) {
+    try {
+      const response = await fetch(
+        `${CICERO_API_BASE}/official?district_id=${district.district_id}&format=json&key=${CICERO_API_KEY}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.response?.results) {
+          categorizeOfficials(data.response.results, district, officials);
+        }
+      }
+    } catch (err) {
+      console.error(`Error fetching district ${district.district_id}:`, err);
+    }
+  }
+  
+  return officials;
+}
+
+function categorizeOfficials(officialsList, district, officials) {
+  const districtType = (district.district_type || '').toLowerCase();
+  
+  officialsList.forEach(official => {
+    const officialData = {
+      title: official.office?.title || 'Official',
+      name: `${official.first_name || ''} ${official.last_name || ''}`.trim(),
+      party: official.party || '',
+      phone: official.offices?.[0]?.phone || '',
+      email: official.email_addresses?.[0] || '',
+      website: official.urls?.[0] || ''
+    };
+    
+    if (districtType.includes('federal') || districtType.includes('congress')) {
+      officials.federal.push(officialData);
+    } else if (districtType.includes('state')) {
+      officials.state.push(officialData);
+    } else if (districtType.includes('county')) {
+      officials.county.push(officialData);
+    } else {
+      officials.local.push(officialData);
+    }
+  });
+}
+
+function displayOfficials(officials, address, resultsDiv) {
+  let html = `<div class="kmr-results-header">Your Elected Representatives</div>`;
+  
+  html += `<div class="kmr-alert kmr-alert-info">
+    <strong>📍 Address:</strong> ${address}
+  </div>`;
+  
+  let totalCount = 0;
+  
+  ['federal', 'state', 'county', 'local'].forEach(level => {
+    if (officials[level].length > 0) {
+      const title = level.charAt(0).toUpperCase() + level.slice(1) + ' Officials';
+      html += `<div class="kmr-category">
+        <div class="kmr-category-title">${title}</div>`;
+      
+      officials[level].forEach(official => {
+        const partyClass = official.party?.toLowerCase().includes('republican') ? 'republican' : 
+                          official.party?.toLowerCase().includes('democrat') ? 'democrat' : '';
+        
+        html += `
+          <div class="kmr-official-card">
+            <div class="kmr-official-title">${official.title}</div>
+            <div class="kmr-official-name">
+              ${official.name}
+              ${official.party ? `<span class="kmr-party-badge ${partyClass}">${official.party}</span>` : ''}
+            </div>
+            <div class="kmr-contact-info">
+              ${official.phone ? `<span>📞 ${official.phone}</span>` : ''}
+              ${official.email ? `<span>✉️ <a href="mailto:${official.email}">${official.email}</a></span>` : ''}
+              ${official.website ? `<span>🌐 <a href="${official.website}" target="_blank">Website</a></span>` : ''}
+            </div>
+          </div>
+        `;
+        totalCount++;
+      });
+      
+      html += '</div>';
+    }
+  });
+  
+  if (totalCount === 0) {
+    showFallbackLinks(resultsDiv, address);
+  } else {
+    html = html.replace('Your Elected Representatives', 
+                       `Your Elected Representatives (${totalCount} Found)`);
+    html += getManualLookupSection(address);
+    resultsDiv.innerHTML = html;
+  }
+}
+
+function showFallbackLinks(resultsDiv, address) {
+  resultsDiv.innerHTML = `
+    <div class="kmr-alert kmr-alert-warning">
+      <strong>Automatic lookup unavailable</strong><br>
+      Please use the manual lookup tools below to find your representatives.
+    </div>
+    ${getManualLookupSection(address)}
+  `;
+}
+
+function getManualLookupSection(address) {
+  const addressLower = address.toLowerCase();
+  const isMD = /\bmd\b|maryland|baltimore|bethesda|rockville/i.test(addressLower);
+  const isVA = /\bva\b|virginia|arlington|alexandria|richmond/i.test(addressLower);
+  const isDC = /\bdc\b|district|washington\sd/i.test(addressLower);
+  
+  let stateLinks = '';
+  
+  if (isMD) {
+    stateLinks = `
+      <div class="kmr-link-card">
+        <a href="https://www.maryland.gov/pages/nearme.aspx" target="_blank">🦀 Maryland NearMe Services</a>
+      </div>
+      <div class="kmr-link-card">
+        <a href="https://mgaleg.maryland.gov/mgawebsite/Members/District" target="_blank">📍 Find MD Legislators</a>
+      </div>
+    `;
+  } else if (isVA) {
+    stateLinks = `
+      <div class="kmr-link-card">
+        <a href="https://www.virginia.gov/local-government/" target="_blank">🏛️ Virginia Local Government</a>
+      </div>
+      <div class="kmr-link-card">
+        <a href="https://whosmy.virginiageneralassembly.gov/" target="_blank">📍 Find VA Legislators</a>
+      </div>
+    `;
+  } else if (isDC) {
+    stateLinks = `
+      <div class="kmr-link-card">
+        <a href="https://dccouncil.gov/councilmembers/" target="_blank">🏛️ DC Council Members</a>
+      </div>
+      <div class="kmr-link-card">
+        <a href="https://anc.dc.gov/" target="_blank">📍 Find Your ANC</a>
+      </div>
+    `;
+  }
+  
+  return `
+    <div class="kmr-manual-section">
+      <div class="kmr-manual-title">Additional Lookup Tools</div>
+      <div class="kmr-link-grid">
+        ${stateLinks}
+        <div class="kmr-link-card">
+          <a href="https://www.usa.gov/elected-officials" target="_blank">🇺🇸 USA.gov Official Lookup</a>
+        </div>
+        <div class="kmr-link-card">
+          <a href="https://www.house.gov/representatives/find-your-representative" target="_blank">🏛️ Find U.S. Representative</a>
+        </div>
+        <div class="kmr-link-card">
+          <a href="https://www.senate.gov/senators/" target="_blank">🏛️ U.S. Senators</a>
+        </div>
+        <div class="kmr-link-card">
+          <a href="https://ballotpedia.org/Who_represents_me" target="_blank">📊 Ballotpedia</a>
+        </div>
+        <div class="kmr-link-card">
+          <a href="https://openstates.org/find_your_legislator/" target="_blank">📍 OpenStates</a>
+        </div>
+        <div class="kmr-link-card">
+          <a href="https://www.usmayors.org/mayors/meet-the-mayors" target="_blank">🏙️ Find Your Mayor</a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function showManualLookup() {
+  const resultsDiv = document.getElementById('kmr-results');
+  showFallbackLinks(resultsDiv, '');
+}
+
+document.getElementById('kmr-address').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') findReps();
+});
+</script>
+</body>
+</html>
