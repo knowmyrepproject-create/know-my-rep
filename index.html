@@ -675,7 +675,7 @@
             return senators.map(senator => ({
                 ...senator,
                 office: {
-                    name: 'U.S. Senator',
+                    name: `U.S. Senator from ${state}`,
                     district: { district_type: 'federal', district_id: state }
                 },
                 source: 'federal'
@@ -789,47 +789,124 @@
                 'assessor', 'recorder', 'surveyor', 'public defender'
             ];
             
-            // Keywords for categorizing officials
+            // Keywords for categorizing officials WITH proper title mapping
             const categoryKeywords = {
-                stateExecutive: ['governor', 'lieutenant governor', 'lt. governor', 'attorney general', 'comptroller', 'treasurer'],
-                stateLegislative: ['state senator', 'state delegate', 'state representative', 'house of delegates', 'state assembly', 'state house'],
-                county: ['county executive', 'county council', 'county commissioner', 'county board'],
-                local: ['mayor', 'city council', 'town council', 'alderman', 'selectman', 'village', 'borough'],
-                school: ['school board', 'board of education', 'school committee', 'school director'],
-                federalLegislative: ['u.s. senator', 'u.s. representative', 'united states senator', 'united states representative', 'congress'],
-                federalExecutive: ['president', 'vice president']
+                stateExecutive: {
+                    keywords: ['governor', 'lieutenant governor', 'lt. governor', 'attorney general', 'comptroller', 'treasurer'],
+                    titleMap: {
+                        'governor': 'Governor',
+                        'lieutenant governor': 'Lieutenant Governor',
+                        'lt. governor': 'Lieutenant Governor',
+                        'attorney general': 'Attorney General',
+                        'comptroller': 'State Comptroller',
+                        'treasurer': 'State Treasurer'
+                    }
+                },
+                stateLegislative: {
+                    keywords: ['state senator', 'state delegate', 'state representative', 'house of delegates', 'state assembly', 'state house'],
+                    titleMap: {
+                        'state senator': 'State Senator',
+                        'state delegate': 'State Delegate',
+                        'state representative': 'State Representative',
+                        'house of delegates': 'Member, House of Delegates',
+                        'state assembly': 'State Assembly Member',
+                        'state house': 'State House Representative'
+                    }
+                },
+                county: {
+                    keywords: ['county executive', 'county council', 'county commissioner', 'county board'],
+                    titleMap: {
+                        'county executive': 'County Executive',
+                        'county council': 'County Council Member',
+                        'county commissioner': 'County Commissioner',
+                        'county board': 'County Board Member'
+                    }
+                },
+                local: {
+                    keywords: ['mayor', 'city council', 'town council', 'alderman', 'selectman', 'village', 'borough'],
+                    titleMap: {
+                        'mayor': 'Mayor',
+                        'city council': 'City Council Member',
+                        'town council': 'Town Council Member',
+                        'alderman': 'Alderman',
+                        'selectman': 'Selectman',
+                        'village': 'Village Board Member',
+                        'borough': 'Borough Council Member'
+                    }
+                },
+                school: {
+                    keywords: ['school board', 'board of education', 'school committee', 'school director'],
+                    titleMap: {
+                        'school board': 'School Board Member',
+                        'board of education': 'Board of Education Member',
+                        'school committee': 'School Committee Member',
+                        'school director': 'School Director'
+                    }
+                },
+                federalLegislative: {
+                    keywords: ['u.s. senator', 'u.s. representative', 'united states senator', 'united states representative', 'congress'],
+                    titleMap: {
+                        'u.s. senator': 'U.S. Senator',
+                        'u.s. representative': 'U.S. Representative',
+                        'united states senator': 'U.S. Senator',
+                        'united states representative': 'U.S. Representative',
+                        'congress': 'Member of Congress'
+                    }
+                },
+                federalExecutive: {
+                    keywords: ['president', 'vice president'],
+                    titleMap: {
+                        'president': 'President of the United States',
+                        'vice president': 'Vice President of the United States'
+                    }
+                }
             };
             
             officials.forEach(official => {
                 const fullName = `${official.first_name || ''} ${official.last_name || ''}`.toLowerCase().trim();
                 const office = official.office || {};
                 let officeName = (office.name || '').toLowerCase();
+                const originalOfficeName = office.name || ''; // Preserve original name
                 const district = office.district || {};
                 const districtType = (district.district_type || '').toLowerCase();
                 
-                // Fix generic "Office" titles if possible
-                if (officeName === 'office' || officeName === '') {
+                // Fix generic "Office" or "Elected Official" titles if possible
+                if (officeName === 'office' || officeName === 'elected official' || officeName === '') {
                     // Try to infer from district type or other context
                     if (districtType.includes('state') && districtType.includes('senate')) {
                         official.office.name = 'State Senator';
                         officeName = 'state senator';
                     } else if (districtType.includes('state') && districtType.includes('house')) {
-                        official.office.name = 'State Representative';
-                        officeName = 'state representative';
+                        official.office.name = 'State Delegate';
+                        officeName = 'state delegate';
                     } else if (districtType.includes('county')) {
                         official.office.name = 'County Official';
                         officeName = 'county official';
+                    } else {
+                        // If we still can't determine, mark it for better handling
+                        official.office.name = 'Elected Representative';
+                        officeName = 'elected representative';
                     }
+                } else if (!official.office.name || official.office.name === 'Office' || official.office.name === 'Elected Official') {
+                    // Ensure we have a proper title based on the category
+                    // This will be fixed below when we categorize
+                    official.needsTitleFix = true;
                 }
                 
                 // Check if this is an appointed position (with exceptions)
                 const isAppointed = appointedPositions.some(pos => {
                     // Special exceptions for elected positions that contain these words
-                    if (pos === 'commissioner' && officeName.includes('county commissioner')) return false;
+                    if (pos === 'commissioner' && (officeName.includes('county commissioner') || officeName.includes('election commissioner'))) return false;
                     if (pos === 'treasurer' && (officeName.includes('state treasurer') || officeName.includes('county treasurer'))) return false;
+                    if (pos === 'secretary' && officeName.includes('secretary of state')) return false;
                     if (officeName.includes('attorney general')) return false;
+                    if (officeName.includes('comptroller') && (officeName.includes('state') || officeName.includes('county'))) return false;
                     
-                    return officeName.includes(pos);
+                    // For generic "director" or "administrator", only filter if it's clearly administrative
+                    if ((pos === 'director' || pos === 'administrator') && 
+                        (officeName.includes('school') || officeName.includes('board'))) return false;
+                    
+                    return officeName.includes(pos) && !officeName.includes('elect');
                 });
                 
                 if (isAppointed) {
@@ -837,64 +914,135 @@
                     return; // Skip this official
                 }
                 
-                // Categorize based on office name keywords
+                // Categorize based on office name keywords and fix titles
                 let categorized = false;
                 
                 // Check School Board FIRST (highest priority for proper categorization)
-                if (categoryKeywords.school.some(keyword => officeName.includes(keyword))) {
+                const schoolMatch = categoryKeywords.school.keywords.find(keyword => officeName.includes(keyword));
+                if (schoolMatch) {
+                    if (official.needsTitleFix || !official.office.name || official.office.name === 'Elected Official') {
+                        official.office.name = categoryKeywords.school.titleMap[schoolMatch] || 'School Board Member';
+                    }
                     groups['School Board'].push(official);
                     categorized = true;
                 }
                 // Check State Executive
-                else if (categoryKeywords.stateExecutive.some(keyword => officeName.includes(keyword))) {
-                    groups['State Executive'].push(official);
-                    categorized = true;
-                }
-                // Check State Legislative
-                else if (categoryKeywords.stateLegislative.some(keyword => officeName.includes(keyword))) {
-                    groups['State Legislative'].push(official);
-                    categorized = true;
-                }
-                // Check County
-                else if (categoryKeywords.county.some(keyword => officeName.includes(keyword)) ||
-                         (officeName.includes('county') && !officeName.includes('country'))) {
-                    groups['County'].push(official);
-                    categorized = true;
-                }
-                // Check Federal Legislative
-                else if (categoryKeywords.federalLegislative.some(keyword => officeName.includes(keyword)) ||
-                         (officeName.includes('senator') && districtType.includes('federal'))) {
-                    groups['Federal Legislative'].push(official);
-                    categorized = true;
-                }
-                // Check Federal Executive
-                else if (categoryKeywords.federalExecutive.some(keyword => officeName.includes(keyword))) {
-                    groups['Federal Executive'].push(official);
-                    categorized = true;
-                }
-                // Check City/Local
-                else if (categoryKeywords.local.some(keyword => officeName.includes(keyword))) {
-                    groups['City/Town/Local'].push(official);
-                    categorized = true;
+                else {
+                    const stateExecMatch = categoryKeywords.stateExecutive.keywords.find(keyword => officeName.includes(keyword));
+                    if (stateExecMatch) {
+                        if (official.needsTitleFix || !official.office.name || official.office.name === 'Elected Official') {
+                            official.office.name = categoryKeywords.stateExecutive.titleMap[stateExecMatch] || originalOfficeName;
+                        }
+                        groups['State Executive'].push(official);
+                        categorized = true;
+                    }
+                    // Check State Legislative
+                    else {
+                        const stateLegMatch = categoryKeywords.stateLegislative.keywords.find(keyword => officeName.includes(keyword));
+                        if (stateLegMatch) {
+                            if (official.needsTitleFix || !official.office.name || official.office.name === 'Elected Official') {
+                                official.office.name = categoryKeywords.stateLegislative.titleMap[stateLegMatch] || originalOfficeName;
+                            }
+                            groups['State Legislative'].push(official);
+                            categorized = true;
+                        }
+                        // Check County
+                        else {
+                            const countyMatch = categoryKeywords.county.keywords.find(keyword => officeName.includes(keyword));
+                            if (countyMatch || (officeName.includes('county') && !officeName.includes('country'))) {
+                                if (official.needsTitleFix || !official.office.name || official.office.name === 'Elected Official') {
+                                    official.office.name = categoryKeywords.county.titleMap[countyMatch] || 'County Official';
+                                }
+                                groups['County'].push(official);
+                                categorized = true;
+                            }
+                            // Check Federal Legislative
+                            else {
+                                const fedLegMatch = categoryKeywords.federalLegislative.keywords.find(keyword => officeName.includes(keyword));
+                                if (fedLegMatch || (officeName.includes('senator') && districtType.includes('federal'))) {
+                                    if (official.needsTitleFix || !official.office.name || official.office.name === 'Elected Official') {
+                                        official.office.name = categoryKeywords.federalLegislative.titleMap[fedLegMatch] || 'Member of Congress';
+                                    }
+                                    groups['Federal Legislative'].push(official);
+                                    categorized = true;
+                                }
+                                // Check Federal Executive
+                                else {
+                                    const fedExecMatch = categoryKeywords.federalExecutive.keywords.find(keyword => officeName.includes(keyword));
+                                    if (fedExecMatch) {
+                                        if (official.needsTitleFix || !official.office.name || official.office.name === 'Elected Official') {
+                                            official.office.name = categoryKeywords.federalExecutive.titleMap[fedExecMatch] || originalOfficeName;
+                                        }
+                                        groups['Federal Executive'].push(official);
+                                        categorized = true;
+                                    }
+                                    // Check City/Local
+                                    else {
+                                        const localMatch = categoryKeywords.local.keywords.find(keyword => officeName.includes(keyword));
+                                        if (localMatch) {
+                                            if (official.needsTitleFix || !official.office.name || official.office.name === 'Elected Official') {
+                                                official.office.name = categoryKeywords.local.titleMap[localMatch] || 'Local Official';
+                                            }
+                                            groups['City/Town/Local'].push(official);
+                                            categorized = true;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
                 
                 // If still not categorized, try to use district type as a hint
                 if (!categorized && districtType) {
                     if (districtType.includes('federal')) {
+                        // Try to determine if it's House or Senate
+                        if (officeName.includes('representative') || officeName.includes('house')) {
+                            official.office.name = official.office.name || 'U.S. Representative';
+                        } else if (officeName.includes('senator')) {
+                            official.office.name = official.office.name || 'U.S. Senator';
+                        } else {
+                            official.office.name = official.office.name || 'Federal Official';
+                        }
                         groups['Federal Legislative'].push(official);
                     } else if (districtType.includes('state')) {
+                        // Try to determine if it's House or Senate
+                        if (districtType.includes('senate')) {
+                            official.office.name = official.office.name || 'State Senator';
+                        } else if (districtType.includes('house') || districtType.includes('delegate')) {
+                            official.office.name = official.office.name || 'State Delegate';
+                        } else {
+                            official.office.name = official.office.name || 'State Official';
+                        }
                         groups['State Legislative'].push(official);
                     } else if (districtType.includes('county')) {
+                        official.office.name = official.office.name || 'County Official';
                         groups['County'].push(official);
                     } else if (districtType.includes('local') || districtType.includes('city') || districtType.includes('town')) {
+                        if (districtType.includes('city')) {
+                            official.office.name = official.office.name || 'City Official';
+                        } else if (districtType.includes('town')) {
+                            official.office.name = official.office.name || 'Town Official';
+                        } else {
+                            official.office.name = official.office.name || 'Local Official';
+                        }
                         groups['City/Town/Local'].push(official);
                     } else if (districtType.includes('school')) {
+                        official.office.name = official.office.name || 'School Board Member';
                         groups['School Board'].push(official);
                     } else {
+                        // Last resort - try to provide something meaningful
+                        if (!official.office.name || official.office.name === 'Elected Official' || official.office.name === 'Office') {
+                            official.office.name = 'Elected Representative';
+                        }
                         // Log uncategorized for debugging
                         console.log(`Uncategorized official: ${fullName} - Office: "${officeName}" - District Type: "${districtType}"`);
                     }
                 } else if (!categorized) {
+                    // Last resort for completely uncategorized officials
+                    if (!official.office.name || official.office.name === 'Elected Official' || official.office.name === 'Office') {
+                        official.office.name = 'Elected Representative';
+                    }
                     // Log uncategorized for debugging
                     console.log(`Uncategorized official: ${fullName} - Office: "${officeName}" - District Type: "${districtType}"`);
                 }
@@ -923,7 +1071,30 @@
             officials.forEach(official => {
                 const fullName = `${official.first_name || ''} ${official.last_name || ''}`.trim();
                 const office = official.office || {};
-                const officeName = office.name || 'Elected Official';
+                let officeName = office.name || '';
+                
+                // Final fallback for any remaining generic titles
+                if (!officeName || officeName === 'Elected Official' || officeName === 'Office') {
+                    // Try to determine based on the level we're in
+                    if (level === 'State Executive') {
+                        officeName = 'State Executive Official';
+                    } else if (level === 'State Legislative') {
+                        officeName = 'State Legislator';
+                    } else if (level === 'County') {
+                        officeName = 'County Official';
+                    } else if (level === 'City/Town/Local') {
+                        officeName = 'Local Official';
+                    } else if (level === 'School Board') {
+                        officeName = 'School Board Member';
+                    } else if (level === 'Federal Legislative') {
+                        officeName = 'Member of Congress';
+                    } else if (level === 'Federal Executive') {
+                        officeName = 'Federal Executive Official';
+                    } else {
+                        officeName = 'Elected Representative';
+                    }
+                }
+                
                 const party = official.party || '';
                 
                 const partyClass = party.toLowerCase().includes('democrat') ? 'party-democratic' :
