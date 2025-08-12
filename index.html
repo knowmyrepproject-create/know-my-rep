@@ -255,6 +255,9 @@
                 const response = await fetch(`/api/fetchCongress?state=${state}`); // Netlify function URL
                 const data = await response.json();
                 
+                // Log the data to see what is returned from the Netlify function
+                console.log('Congressional Data Response:', data);
+
                 if (data && data.length > 0) {
                     return data; // Return the list of legislators
                 } else {
