@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Know My Rep - Find Your Representatives</title>
     <style>
-        /* Add your existing styles here */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -210,12 +209,21 @@
                 });
                 const geoData = await geoResponse.json();
 
+                // Log geocode data for debugging
+                console.log('Geocode response:', geoData);
+
                 if (geoData && geoData.length > 0) {
                     const lat = geoData[0].lat;
                     const lon = geoData[0].lon;
                     const displayName = geoData[0].display_name;
-                    const state = geoData[0].display_name.split(',').find(part => part.trim().length === 2)?.trim();
 
+                    // Try extracting state from the display name
+                    const addressParts = geoData[0].display_name.split(',');
+
+                    // Find the state (usually the second-to-last part in US addresses)
+                    const state = addressParts[addressParts.length - 2]?.trim();
+
+                    // Check if state was successfully extracted
                     if (!state) {
                         throw new Error('State could not be extracted from the address.');
                     }
