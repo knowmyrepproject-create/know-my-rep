@@ -7,7 +7,6 @@ exports.handler = async (event) => {
     // Get your API key from Netlify's environment variables
     const CICERO_KEY = process.env.CICERO_API_KEY;
 
-    console.log('Fetching representatives for coordinates:', lat, lon);
     console.log('=================================');
     console.log('Fetching representatives for:');
     console.log('Latitude:', lat);
@@ -16,13 +15,11 @@ exports.handler = async (event) => {
     console.log('=================================');
 
     try {
-        // Call Cicero API to fetch officials
-        const ciceroUrl = `https://cicero.azavea.com/v3.1/official?lat=${lat}&lon=${lon}&format=json&key=${CICERO_KEY}`;
-
+        // We'll collect all officials from different API calls
         let allOfficials = [];
         let allDistricts = [];
 
-        // Step 1: Fetch legislative districts
+        // Step 1: Fetch legislative districts for this location
         console.log('Step 1: Fetching legislative districts...');
         const districtUrl = `https://cicero.azavea.com/v3.1/legislative_district?lat=${lat}&lon=${lon}&format=json&key=${CICERO_KEY}`;
         const districtResponse = await fetch(districtUrl);
@@ -33,9 +30,10 @@ exports.handler = async (event) => {
             console.log(`Found ${allDistricts.length} legislative districts`);
         }
 
-        // Step 2: Fetch officials from main endpoint
+        // Step 2: Fetch officials from the main endpoint
         console.log('Step 2: Fetching officials from main endpoint...');
-        const officialResponse = await fetch(ciceroUrl);
+        const officialUrl = `https://cicero.azavea.com/v3.1/official?lat=${lat}&lon=${lon}&format=json&key=${CICERO_KEY}`;
+        const officialResponse = await fetch(officialUrl);
         const officialData = await officialResponse.json();
 
         if (officialData.response && officialData.response.results && officialData.response.results.officials) {
@@ -54,7 +52,7 @@ exports.handler = async (event) => {
             const nonLegDistricts = nonLegData.response.results.districts;
             console.log(`Found ${nonLegDistricts.length} non-legislative districts`);
 
-            // For each non-legislative district, fetch officials
+            // For each non-legislative district, try to get officials
             for (const district of nonLegDistricts) {
                 if (district.id) {
                     try {
@@ -75,7 +73,7 @@ exports.handler = async (event) => {
             }
         }
 
-        // Step 4: Fetch election-related officials
+        // Step 4: Try to get election-related officials
         console.log('Step 4: Fetching election officials...');
         const electionUrl = `https://cicero.azavea.com/v3.1/election_event?lat=${lat}&lon=${lon}&format=json&key=${CICERO_KEY}`;
         try {
