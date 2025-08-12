@@ -1,1 +1,15 @@
-npm init -y
+{
+  "name": "know-my-rep",
+  "version": "1.0.0",
+  "description": "Find your elected representatives",
+  "main": "index.html",
+  "scripts": {
+    "start": "netlify dev"
+  },
+  "dependencies": {
+    "node-fetch": "^2.6.1"
+  },
+  "devDependencies": {},
+  "author": "",
+  "license": "ISC"
+}
