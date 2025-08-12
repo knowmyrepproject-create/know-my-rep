@@ -1,12 +1,10 @@
-// netlify/functions/fetchCongress.js
-
 const fetch = require('node-fetch');  // Ensure node-fetch is installed
 const apiUrl = 'https://api.congress.gov/v3/legislators';
 
 exports.handler = async (event, context) => {
     // Get state from query params
     const state = event.queryStringParameters.state;
-    
+
     // Access the environment variable (set in Netlify)
     const congressApiKey = process.env.CONGRESS_API_KEY;
 
@@ -18,11 +16,14 @@ exports.handler = async (event, context) => {
         };
     }
 
+    // Construct the API URL with the state
+    const congressApiUrl = `${apiUrl}?state=${state}&format=json`;
+
     try {
-        // Call Congress.gov API with the state
-        const response = await fetch(`${apiUrl}?state=${state}&format=json`, {
+        // Fetch data from Congress.gov API with the state
+        const response = await fetch(congressApiUrl, {
             headers: {
-                'Authorization': `Bearer ${congressApiKey}`,  // Use API key securely
+                'Authorization': `Bearer ${congressApiKey}`  // Use API key securely
             },
         });
 
