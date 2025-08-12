@@ -172,6 +172,10 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
         }
 
+        .kmr-official-card.enhanced {
+            border-left-color: #28a745;
+        }
+
         .kmr-official-name {
             font-size: 1.2em;
             font-weight: 600;
@@ -204,7 +208,7 @@
             color: white;
         }
 
-        .party-independent, .party-green, .party-libertarian {
+        .party-independent, .party-green, .party-libertarian, .party-nonpartisan {
             background: #808080;
             color: white;
         }
@@ -236,6 +240,15 @@
 
         .kmr-contact-item a:hover {
             text-decoration: underline;
+        }
+
+        .kmr-official-bio {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+            font-size: 0.9em;
+            color: #666;
+            font-style: italic;
         }
 
         .kmr-error {
@@ -328,6 +341,13 @@
             font-size: 0.9em;
         }
 
+        .kmr-data-source {
+            font-size: 0.8em;
+            color: #28a745;
+            margin-left: 10px;
+            font-weight: normal;
+        }
+
         @media (max-width: 768px) {
             .kmr-hero h1 {
                 font-size: 1.8em;
@@ -369,7 +389,7 @@
             </div>
             <div id="statusMessage"></div>
             <div style="margin-top: 15px; font-size: 0.85em; color: #666; text-align: center;">
-                Searches Cicero database for comprehensive elected official information
+                Searches government databases for comprehensive elected official information
             </div>
         </div>
 
@@ -455,7 +475,7 @@
             let allOfficials = [];
             
             // Fetch from Cicero via our backend
-            showStatus('Searching Cicero database...', 'info');
+            showStatus('Searching official databases...', 'info');
             
             try {
                 console.log('Calling backend function at /.netlify/functions/get-representatives');
@@ -468,38 +488,104 @@
                     body: JSON.stringify({ lat, lon, address })
                 });
                 
-                if (!response.ok) {
-                    console.error('Backend returned error:', response.status);
-                    throw new Error(`Backend error: ${response.status}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data && data.response && data.response.results && data.response.results.officials) {
+                        const ciceroOfficials = data.response.results.officials;
+                        console.log(`Found ${ciceroOfficials.length} officials from Cicero`);
+                        allOfficials = ciceroOfficials.map(official => ({
+                            ...official,
+                            source: 'cicero'
+                        }));
+                    }
                 }
-                
-                const data = await response.json();
-                console.log('Backend response received:', data);
-                
-                // Extract officials from response
-                if (data && data.response && data.response.results && data.response.results.officials) {
-                    const ciceroOfficials = data.response.results.officials;
-                    console.log(`Found ${ciceroOfficials.length} officials from Cicero`);
-                    
-                    // Add source tag to each official
-                    allOfficials = ciceroOfficials.map(official => ({
-                        ...official,
-                        source: 'cicero'
-                    }));
-                } else {
-                    console.log('No officials found in Cicero response');
-                }
-                
             } catch (error) {
                 console.error('Error fetching from backend:', error);
-                showStatus('Cicero database unavailable, showing federal officials only', 'info');
             }
             
-            // Add hardcoded federal officials as fallback
-            const federalOfficials = await getFederalOfficials(address);
-            allOfficials = allOfficials.concat(federalOfficials);
+            // Fetch and merge Maryland officials data
+            const state = extractStateFromAddress(address);
+            if (state === 'MD') {
+                try {
+                    console.log('Fetching Maryland officials data...');
+                    const mdResponse = await fetch('/data/maryland-officials.json');
+                    
+                    if (mdResponse.ok) {
+                        const mdData = await mdResponse.json();
+                        console.log(`Found ${mdData.length} Maryland officials in local database`);
+                        
+                        // Merge strategy: enhance existing officials and add missing ones
+                        mdData.forEach(mdOfficial => {
+                            // Check if this official already exists in Cicero data
+                            const existingIndex = allOfficials.findIndex(o => 
+                                o.first_name?.toLowerCase() === mdOfficial.first_name?.toLowerCase() &&
+                                o.last_name?.toLowerCase() === mdOfficial.last_name?.toLowerCase()
+                            );
+                            
+                            if (existingIndex >= 0) {
+                                // Enhance existing official with better data
+                                const existing = allOfficials[existingIndex];
+                                existing.phone = mdOfficial.phone || existing.phone;
+                                existing.email_addresses = mdOfficial.email ? [mdOfficial.email] : existing.email_addresses;
+                                existing.urls = mdOfficial.website ? [mdOfficial.website] : existing.urls;
+                                existing.bio = mdOfficial.bio_short;
+                                existing.committees = mdOfficial.committees;
+                                existing.enhanced = true;
+                                
+                                // Fix office name if it's generic
+                                if (existing.office && (existing.office.name === 'Office' || !existing.office.name)) {
+                                    existing.office.name = mdOfficial.position;
+                                }
+                            } else {
+                                // Add new official not in Cicero
+                                allOfficials.push({
+                                    first_name: mdOfficial.first_name,
+                                    last_name: mdOfficial.last_name,
+                                    party: mdOfficial.party,
+                                    office: {
+                                        name: mdOfficial.position,
+                                        district: {
+                                            district_type: mdOfficial.government_level?.toLowerCase(),
+                                            district_id: mdOfficial.district_ward
+                                        }
+                                    },
+                                    email_addresses: mdOfficial.email ? [mdOfficial.email] : [],
+                                    urls: mdOfficial.website ? [mdOfficial.website] : [],
+                                    addresses: mdOfficial.address ? [{
+                                        phone: mdOfficial.phone,
+                                        address: mdOfficial.address
+                                    }] : [],
+                                    phone: mdOfficial.phone,
+                                    bio: mdOfficial.bio_short,
+                                    committees: mdOfficial.committees,
+                                    source: 'maryland_data',
+                                    enhanced: true
+                                });
+                            }
+                        });
+                        
+                        showStatus('Enhanced with Maryland-specific data', 'success');
+                    }
+                } catch (error) {
+                    console.log('Maryland data not available, using Cicero only');
+                }
+            }
             
-            console.log(`Total officials found: ${allOfficials.length}`);
+            // Add hardcoded federal officials as final fallback
+            const federalOfficials = await getFederalOfficials(address);
+            
+            // Only add federal officials if not already present
+            federalOfficials.forEach(fed => {
+                const exists = allOfficials.some(o => 
+                    o.first_name === fed.first_name && 
+                    o.last_name === fed.last_name
+                );
+                if (!exists) {
+                    allOfficials.push(fed);
+                }
+            });
+            
+            console.log(`Total officials after merging: ${allOfficials.length}`);
             return allOfficials;
         }
 
@@ -596,12 +682,18 @@
             
             // Count ELECTED officials only
             let electedCount = 0;
+            let enhancedCount = 0;
             for (const [level, levelOfficials] of Object.entries(grouped)) {
                 electedCount += levelOfficials.length;
+                enhancedCount += levelOfficials.filter(o => o.enhanced).length;
             }
             
             if (electedCount > 0) {
-                showStatus(`Found ${electedCount} elected representatives who directly represent you`, 'success');
+                let statusMsg = `Found ${electedCount} elected representatives`;
+                if (enhancedCount > 0) {
+                    statusMsg += ` (${enhancedCount} with enhanced data)`;
+                }
+                showStatus(statusMsg, 'success');
             } else {
                 showStatus('Limited results. Please check manual lookup tools below.', 'error');
             }
@@ -637,18 +729,19 @@
                     }
                 }
                 
-                // Add note about what's missing
-                html += `
-                    <div class="kmr-note">
-                        <strong>Note:</strong> Some positions may not appear above due to database limitations:
-                        <ul style="margin-top: 10px; margin-left: 20px;">
-                            <li>School Board members</li>
-                            <li>U.S. House Representative</li>
-                            <li>Some local city/town officials</li>
-                        </ul>
-                        Please use the resources below to find these officials.
-                    </div>
-                `;
+                // Add note about what's missing if we don't have school board
+                if (!grouped['School Board'] || grouped['School Board'].length === 0) {
+                    html += `
+                        <div class="kmr-note">
+                            <strong>Note:</strong> Some positions may not appear above:
+                            <ul style="margin-top: 10px; margin-left: 20px;">
+                                <li>School Board members (if not in our database)</li>
+                                <li>Some hyper-local officials</li>
+                            </ul>
+                            Please use the resources below to find any missing officials.
+                        </div>
+                    `;
+                }
             }
             
             resultsDiv.innerHTML = html;
@@ -727,8 +820,13 @@
                 // Categorize based on office name keywords
                 let categorized = false;
                 
+                // Check School Board FIRST (highest priority for proper categorization)
+                if (categoryKeywords.school.some(keyword => officeName.includes(keyword))) {
+                    groups['School Board'].push(official);
+                    categorized = true;
+                }
                 // Check State Executive
-                if (categoryKeywords.stateExecutive.some(keyword => officeName.includes(keyword))) {
+                else if (categoryKeywords.stateExecutive.some(keyword => officeName.includes(keyword))) {
                     groups['State Executive'].push(official);
                     categorized = true;
                 }
@@ -741,11 +839,6 @@
                 else if (categoryKeywords.county.some(keyword => officeName.includes(keyword)) ||
                          (officeName.includes('county') && !officeName.includes('country'))) {
                     groups['County'].push(official);
-                    categorized = true;
-                }
-                // Check School Board
-                else if (categoryKeywords.school.some(keyword => officeName.includes(keyword))) {
-                    groups['School Board'].push(official);
                     categorized = true;
                 }
                 // Check Federal Legislative
@@ -815,26 +908,36 @@
                 
                 const partyClass = party.toLowerCase().includes('democrat') ? 'party-democratic' :
                                   party.toLowerCase().includes('republican') ? 'party-republican' :
+                                  party.toLowerCase().includes('nonpartisan') ? 'party-nonpartisan' :
                                   'party-independent';
                 
                 // Contact info
-                const addresses = official.addresses || [];
-                const primaryAddress = addresses[0] || {};
-                const phone = primaryAddress.phone || '';
+                const phone = official.phone || (official.addresses?.[0]?.phone) || '';
                 const email = official.email_addresses?.[0] || '';
                 const website = official.urls?.[0] || '';
+                const bio = official.bio || '';
+                const committees = official.committees || '';
+                
+                // Check if this official has enhanced data
+                const isEnhanced = official.enhanced || false;
                 
                 html += `
-                    <div class="kmr-official-card">
-                        <div class="kmr-official-name">${fullName || 'Name Not Available'}</div>
+                    <div class="kmr-official-card ${isEnhanced ? 'enhanced' : ''}">
+                        <div class="kmr-official-name">
+                            ${fullName || 'Name Not Available'}
+                            ${isEnhanced ? '<span class="kmr-data-source">✓</span>' : ''}
+                        </div>
                         <div class="kmr-official-office">${officeName}</div>
                         ${party ? `<span class="kmr-official-party ${partyClass}">${party}</span>` : ''}
+                        
+                        ${bio ? `<div class="kmr-official-bio">${bio}</div>` : ''}
+                        ${committees ? `<div class="kmr-contact-item"><strong>Committees:</strong> ${committees}</div>` : ''}
                         
                         ${(phone || email || website) ? `
                             <div class="kmr-official-contact">
                                 ${phone ? `<div class="kmr-contact-item"><strong>Phone:</strong> ${phone}</div>` : ''}
                                 ${email ? `<div class="kmr-contact-item"><strong>Email:</strong> <a href="mailto:${email}">${email}</a></div>` : ''}
-                                ${website ? `<div class="kmr-contact-item"><strong>Web:</strong> <a href="${website}" target="_blank">Visit</a></div>` : ''}
+                                ${website ? `<div class="kmr-contact-item"><strong>Web:</strong> <a href="${website.startsWith('http') ? website : 'https://' + website}" target="_blank">Visit</a></div>` : ''}
                             </div>
                         ` : ''}
                     </div>
@@ -852,8 +955,8 @@
             
             let html = `
                 <div class="kmr-alternatives">
-                    <h2>Find Missing Officials</h2>
-                    <p style="margin-bottom: 20px;">Use these resources to find officials not shown above:</p>
+                    <h2>Find Additional Officials</h2>
+                    <p style="margin-bottom: 20px;">Use these resources to find any officials not shown above:</p>
             `;
             
             // Specific resources for finding missing officials
@@ -968,7 +1071,7 @@
 
         // Initialize - add enter key support
         window.addEventListener('load', () => {
-            console.log('Know My Rep loaded - Version: Universal (No Hardcoded Names)');
+            console.log('Know My Rep loaded - Version: With Maryland Data Integration');
             
             // Allow Enter key to trigger search
             document.getElementById('addressInput').addEventListener('keypress', (e) => {
@@ -980,3 +1083,4 @@
     </script>
 </body>
 </html>
+    
