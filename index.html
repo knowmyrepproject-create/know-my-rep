@@ -406,68 +406,55 @@
         // ============================================
         // MAIN SEARCH FUNCTION
         // ============================================
-        
         async function findRepresentatives() {
             const address = document.getElementById('addressInput').value.trim();
+            
             if (!address) {
-                showStatus('Please enter your address', 'error');
+                showError('Please enter your address');
                 return;
             }
-
-            const searchButton = document.getElementById('searchButton');
-            const loadingDiv = document.getElementById('loadingDiv');
-            const loadingText = document.getElementById('loadingText');
-            const resultsDiv = document.getElementById('resultsDiv');
-            const alternativesDiv = document.getElementById('alternativesDiv');
             
-            // Disable button and show loading
+            // Show loading
+            document.getElementById('loadingDiv').style.display = 'block';
+            document.getElementById('resultsDiv').innerHTML = '';
+            document.getElementById('alternativesDiv').innerHTML = '';
+            document.getElementById('statusMessage').innerHTML = '';
+            
+            // Disable button during search
+            const searchButton = document.getElementById('searchButton');
             searchButton.disabled = true;
-            loadingDiv.style.display = 'block';
-            resultsDiv.innerHTML = '';
-            alternativesDiv.innerHTML = '';
-            showStatus('Searching for your representatives...', 'info');
-
+            
             try {
-                // Step 1: Geocode the address
-                loadingText.textContent = 'Locating address...';
+                // Geocode the address
                 showStatus('Locating address...', 'info');
-                
                 const geocodeUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=us&limit=1`;
                 
-                const geoResponse = await fetch(geocodeUrl, {
-                    headers: {
-                        'User-Agent': 'KnowMyRep/1.0'
-                    }
-                });
+                const geoResponse = await fetch(geocodeUrl);
                 const geoData = await geoResponse.json();
-
-                if (geoData && geoData.length > 0) {
-                    const lat = geoData[0].lat;
-                    const lon = geoData[0].lon;
-                    const displayName = geoData[0].display_name;
-                    
-                    console.log('Location found:', displayName);
-                    showStatus(`Found location: ${displayName}`, 'success');
-                    
-                    // Step 2: Fetch all officials
-                    loadingText.textContent = 'Retrieving elected officials...';
-                    const allOfficials = await fetchAllOfficials(lat, lon, address);
-                    
-                    // Display results
-                    displayCombinedResults(allOfficials, address);
-                    
-                } else {
+                
+                if (!geoData || geoData.length === 0) {
                     throw new Error('Could not find that address. Please check and try again.');
                 }
                 
+                const lat = geoData[0].lat;
+                const lon = geoData[0].lon;
+                
+                console.log(`Address geocoded to: ${lat}, ${lon}`);
+                
+                // Fetch all officials (Cicero + Maryland data + Federal)
+                const allOfficials = await fetchAllOfficials(lat, lon, address);
+                
+                // Display combined results
+                displayCombinedResults(allOfficials, address);
+                
             } catch (error) {
                 console.error('Error:', error);
-                showError(error.message || 'Unable to search. Please try the manual lookup tools below.');
+                showError(error.message || 'An error occurred. Please try again.');
                 showAlternatives();
             } finally {
                 // Re-enable button and hide loading
                 searchButton.disabled = false;
-                loadingDiv.style.display = 'none';
+                document.getElementById('loadingDiv').style.display = 'none';
             }
         }
 
@@ -507,12 +494,29 @@
             const state = extractStateFromAddress(address);
             if (state === 'MD') {
                 try {
-                    console.log('Fetching Maryland officials data...');
+                    console.log('Fetching Maryland officials from /data/maryland-officials.json...');
                     const mdResponse = await fetch('/data/maryland-officials.json');
+                    
+                    console.log('🔍 Maryland data response status:', mdResponse.status);
+                    console.log('🔍 Response OK?:', mdResponse.ok);
                     
                     if (mdResponse.ok) {
                         const mdData = await mdResponse.json();
-                        console.log(`Found ${mdData.length} Maryland officials in local database`);
+                        console.log(`✅ Successfully loaded ${mdData.length} Maryland officials from JSON`);
+                        
+                        // Log first few officials to verify data structure
+                        if (mdData.length > 0) {
+                            console.log('Sample Maryland officials:', mdData.slice(0, 3).map(o => ({
+                                name: o.name,
+                                position: o.position,
+                                first_name: o.first_name,
+                                last_name: o.last_name
+                            })));
+                        }
+                        
+                        // Track what we're doing
+                        let enhanced = 0;
+                        let added = 0;
                         
                         // Merge strategy: enhance existing officials and add missing ones
                         mdData.forEach(mdOfficial => {
@@ -524,6 +528,7 @@
                             
                             if (existingIndex >= 0) {
                                 // Enhance existing official with better data
+                                enhanced++;
                                 const existing = allOfficials[existingIndex];
                                 existing.phone = mdOfficial.phone || existing.phone;
                                 existing.email_addresses = mdOfficial.email ? [mdOfficial.email] : existing.email_addresses;
@@ -532,12 +537,17 @@
                                 existing.committees = mdOfficial.committees;
                                 existing.enhanced = true;
                                 
-                                // Fix office name if it's generic
-                                if (existing.office && (existing.office.name === 'Office' || !existing.office.name)) {
+                                // Fix office name if it's generic - CHECK FOR "Elected Official" TOO!
+                                if (existing.office && (existing.office.name === 'Office' || 
+                                                        existing.office.name === 'Elected Official' || 
+                                                        !existing.office.name)) {
                                     existing.office.name = mdOfficial.position;
+                                    console.log(`Fixed title for ${mdOfficial.name}: ${mdOfficial.position}`);
                                 }
                             } else {
                                 // Add new official not in Cicero
+                                added++;
+                                console.log(`Adding new official: ${mdOfficial.name} - ${mdOfficial.position}`);
                                 allOfficials.push({
                                     first_name: mdOfficial.first_name,
                                     last_name: mdOfficial.last_name,
@@ -564,11 +574,21 @@
                             }
                         });
                         
-                        showStatus('Enhanced with Maryland-specific data', 'success');
+                        console.log(`✅ Enhanced ${enhanced} officials, Added ${added} new officials`);
+                        showStatus(`Enhanced with Maryland data (${added} new officials added)`, 'success');
+                    } else {
+                        console.error('❌ Failed to load Maryland data. Status:', mdResponse.status);
+                        console.error('URL attempted:', '/data/maryland-officials.json');
+                        if (mdResponse.status === 404) {
+                            console.error('File not found! Check if data/maryland-officials.json exists in your GitHub repo');
+                        }
                     }
                 } catch (error) {
+                    console.error('❌ Error loading Maryland data:', error);
                     console.log('Maryland data not available, using Cicero only');
                 }
+            } else {
+                console.log(`State is ${state}, not MD - skipping Maryland data`);
             }
             
             // Add hardcoded federal officials as final fallback
@@ -585,7 +605,7 @@
                 }
             });
             
-            console.log(`Total officials after merging: ${allOfficials.length}`);
+            console.log(`✅ Total officials after merging: ${allOfficials.length}`);
             return allOfficials;
         }
 
@@ -1071,7 +1091,7 @@
 
         // Initialize - add enter key support
         window.addEventListener('load', () => {
-            console.log('Know My Rep loaded - Version: With Maryland Data Integration');
+            console.log('Know My Rep loaded - Version: With Maryland Data Integration (Debugging)');
             
             // Allow Enter key to trigger search
             document.getElementById('addressInput').addEventListener('keypress', (e) => {
@@ -1083,4 +1103,3 @@
     </script>
 </body>
 </html>
-    
